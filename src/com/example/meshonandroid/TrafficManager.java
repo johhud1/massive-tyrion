@@ -7,7 +7,7 @@ import android.util.SparseIntArray;
 
 public class TrafficManager {
 
-    private boolean mHaveData = false;
+    private boolean mHaveData = true;
     private Node mNode;
     private int mContactId;
     private SparseIntArray mPortToContactID = new SparseIntArray();
