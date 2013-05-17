@@ -10,6 +10,7 @@ import adhoc.aodv.ObserverConst;
 import adhoc.aodv.Node.MessageToObserver;
 import adhoc.aodv.Node.PacketToObserver;
 import adhoc.aodv.exception.BadPduFormatException;
+import android.util.Log;
 import android.widget.TextView;
 
 
@@ -56,24 +57,31 @@ public class AODVObserver implements Observer {
     }
 
     private void parseMessage(int senderID, byte[] data){
+        String tag = "AODVObserver:parseMessage";
         String[] split = new String(data).split(";",2);
         try {
             int type = Integer.parseInt(split[0]);
             switch (type) {
             case Constants.PDU_DATAMSG:
-                System.out.println("Recived: Msg");
+                System.out.println("Received: Msg");
                 DataMsg dataMsg = new DataMsg();
                 dataMsg.parseBytes(data);
                 outField.setText(outField.getText()+"\n"+dataMsg.toReadableString());
                 break;
             case Constants.PDU_EXITNODEREQ:
-                System.out.println("Recived: Msg");
+                System.out.println("Received: Exit Node Request msg");
                 ExitNodeReqPDU exitMsg = new ExitNodeReqPDU();
                 exitMsg.parseBytes(data);
-                outField.setText(outField.getText()+"\n"+exitMsg.toReadableString());
+                Log.d(tag, exitMsg.toReadableString());
+                break;
+            case Constants.PDU_EXITNODEREP:
+                System.out.println("Received: PDU Exit Node Reply msg");
+                ExitNodeRepPDU repMsg = new ExitNodeRepPDU();
+                repMsg.parseBytes(data);
+                Log.d(tag, repMsg.toReadableString());
                 break;
                 /*
-            case Constants.PDU_CHAT_REQUEST:
+            case Constants.PDU_CHAT_REQUEST:l
 
                 ChatRequest chatReq = new ChatRequest();
                 chatReq.parseBytes(data);

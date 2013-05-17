@@ -80,10 +80,10 @@ public class ExitNodeReqPDU implements MeshPduInterface {
                                                                  + s.length); }
         try {
             type = Byte.parseByte(s[0]);
-            if (type != Constants.PDU_DATAMSG) { throw new BadPduFormatException(
+            if (type != Constants.PDU_EXITNODEREQ) { throw new BadPduFormatException(
                                                                                  "RREQ_DATA: pdu type did not match. "
                                                                                      + "Was expecting: "
-                                                                                     + Constants.PDU_DATAMSG
+                                                                                     + Constants.PDU_EXITNODEREQ
                                                                                      + " but parsed: "
                                                                                      + type); }
             srcID = Integer.parseInt(s[1]);
