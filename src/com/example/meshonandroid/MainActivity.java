@@ -40,7 +40,7 @@ public class MainActivity extends Activity {
         try {
             myNode = new Node(myContactID);
             myNode.startThread();
-            AODVObserver obs = new AODVObserver(myNode, outField);
+            AODVObserver obs = new AODVObserver(myNode, myContactID);
         } catch (BindException e) {
             // TODO Auto-generated catch block
             e.printStackTrace();

@@ -4,6 +4,7 @@ import java.util.Observable;
 import java.util.Observer;
 
 import com.example.meshonandroid.Constants;
+import com.example.meshonandroid.TrafficManager;
 
 import adhoc.aodv.Node;
 import adhoc.aodv.ObserverConst;
@@ -15,11 +16,11 @@ import android.widget.TextView;
 
 
 public class AODVObserver implements Observer {
-    private TextView outField;
+    private TrafficManager mTrafficMan;
 
-    public AODVObserver(Node node, TextView outputField) {
+    public AODVObserver(Node node, int mId) {
         node.addObserver(this);
-        outField = outputField;
+        mTrafficMan =  new TrafficManager(true, node, mId);
     }
 
     @Override
@@ -66,13 +67,13 @@ public class AODVObserver implements Observer {
                 System.out.println("Received: Msg");
                 DataMsg dataMsg = new DataMsg();
                 dataMsg.parseBytes(data);
-                outField.setText(outField.getText()+"\n"+dataMsg.toReadableString());
                 break;
             case Constants.PDU_EXITNODEREQ:
                 System.out.println("Received: Exit Node Request msg");
                 ExitNodeReqPDU exitMsg = new ExitNodeReqPDU();
                 exitMsg.parseBytes(data);
                 Log.d(tag, exitMsg.toReadableString());
+                mTrafficMan.connectionRequested(senderID); //sets up neccessary state and send reply;
                 break;
             case Constants.PDU_EXITNODEREP:
                 System.out.println("Received: PDU Exit Node Reply msg");

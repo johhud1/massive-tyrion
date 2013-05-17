@@ -18,8 +18,8 @@ public class TrafficManager {
      *
      * @param
      */
-    public TrafficManager(boolean haveData, Node node, int mid){
-        mContactId = mid;
+    public TrafficManager(boolean haveData, Node node, int myID){
+        mContactId = myID;
         mNode = node;
         mHaveData = haveData;
     }
