@@ -34,13 +34,13 @@ public class MainActivity extends Activity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
         Button sendRreqData = (Button) findViewById(R.id.rreqdata_req);
-        TextView outField = (TextView) findViewById(R.id.recvd_message_tv);
+
         myContactID = getMyID();
 
         try {
             myNode = new Node(myContactID);
             myNode.startThread();
-            AODVObserver obs = new AODVObserver(myNode, myContactID);
+            AODVObserver obs = new AODVObserver(myNode, myContactID, this);
         } catch (BindException e) {
             // TODO Auto-generated catch block
             e.printStackTrace();
@@ -64,6 +64,11 @@ public class MainActivity extends Activity {
                 }
             }
         });
+    }
+
+    public void setTextField(String text){
+        TextView outField = (TextView) findViewById(R.id.recvd_message_tv);
+        outField.setText(text);
     }
 
     private int getBroadcastID(){

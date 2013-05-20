@@ -5,6 +5,7 @@ import java.util.Observer;
 
 import com.example.meshonandroid.Constants;
 import com.example.meshonandroid.DataManager;
+import com.example.meshonandroid.MainActivity;
 import com.example.meshonandroid.TrafficManager;
 
 import adhoc.aodv.Node;
@@ -12,6 +13,7 @@ import adhoc.aodv.ObserverConst;
 import adhoc.aodv.Node.MessageToObserver;
 import adhoc.aodv.Node.PacketToObserver;
 import adhoc.aodv.exception.BadPduFormatException;
+import android.app.Activity;
 import android.util.Log;
 import android.widget.TextView;
 
@@ -19,10 +21,12 @@ import android.widget.TextView;
 public class AODVObserver implements Observer {
     private TrafficManager mTrafficMan;
     private DataManager mDataMan;
-    
-    public AODVObserver(Node node, int mId) {
+    private MainActivity mActivity;
+
+    public AODVObserver(Node node, int mId, MainActivity mainActivity) {
         node.addObserver(this);
         mTrafficMan =  new TrafficManager(true, node, mId);
+        mActivity = mainActivity;
     }
 
     @Override
@@ -69,12 +73,14 @@ public class AODVObserver implements Observer {
                 System.out.println("Received: Msg");
                 DataMsg dataMsg = new DataMsg();
                 dataMsg.parseBytes(data);
+                mActivity.setTextField("recieved PDU_DATAMSG: "+dataMsg.toReadableString());
                 break;
             case Constants.PDU_EXITNODEREQ:
                 System.out.println("Received: Exit Node Request msg");
                 ExitNodeReqPDU exitMsg = new ExitNodeReqPDU();
                 exitMsg.parseBytes(data);
                 Log.d(tag, exitMsg.toReadableString());
+                mActivity.setTextField("recieved PDU_EXITNODEREQ: "+exitMsg.toReadableString());
                 mTrafficMan.connectionRequested(senderID); //sets up neccessary state and send reply;
                 break;
             case Constants.PDU_EXITNODEREP:
@@ -82,8 +88,9 @@ public class AODVObserver implements Observer {
                 DataMsg dataForward = new DataMsg();
                 dataForward.parseBytes(data);
                 Log.d(tag, dataForward.toReadableString());
+                mActivity.setTextField("recieved PDU_EXITNODEREP: "+dataForward.toReadableString());
                 mDataMan.sendDataMsg(senderID);
-                
+
                 //ExitNodeRepPDU repMsg = new ExitNodeRepPDU();
                 //repMsg.parseBytes(data);
                 //Log.d(tag, repMsg.toReadableString());
