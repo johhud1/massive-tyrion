@@ -4,6 +4,7 @@ import java.util.Observable;
 import java.util.Observer;
 
 import com.example.meshonandroid.Constants;
+import com.example.meshonandroid.DataManager;
 import com.example.meshonandroid.TrafficManager;
 
 import adhoc.aodv.Node;
@@ -17,7 +18,8 @@ import android.widget.TextView;
 
 public class AODVObserver implements Observer {
     private TrafficManager mTrafficMan;
-
+    private DataManager mDataMan;
+    
     public AODVObserver(Node node, int mId) {
         node.addObserver(this);
         mTrafficMan =  new TrafficManager(true, node, mId);
@@ -77,9 +79,14 @@ public class AODVObserver implements Observer {
                 break;
             case Constants.PDU_EXITNODEREP:
                 System.out.println("Received: PDU Exit Node Reply msg");
-                ExitNodeRepPDU repMsg = new ExitNodeRepPDU();
-                repMsg.parseBytes(data);
-                Log.d(tag, repMsg.toReadableString());
+                DataMsg dataForward = new DataMsg();
+                dataForward.parseBytes(data);
+                Log.d(tag, dataForward.toReadableString());
+                mDataMan.sendDataMsg(senderID);
+                
+                //ExitNodeRepPDU repMsg = new ExitNodeRepPDU();
+                //repMsg.parseBytes(data);
+                //Log.d(tag, repMsg.toReadableString());
                 break;
                 /*
             case Constants.PDU_CHAT_REQUEST:l
