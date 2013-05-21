@@ -5,6 +5,7 @@ import java.io.UnsupportedEncodingException;
 import com.example.meshonandroid.Constants;
 
 import adhoc.aodv.exception.BadPduFormatException;
+import android.util.Log;
 
 public class DataMsg implements MeshPduInterface {
 
@@ -56,18 +57,27 @@ public class DataMsg implements MeshPduInterface {
 
     @Override
     public String toString() {
-        return type + ";" + srcID + ";" + broadcastID + ";" + packetID + ";" + data;
+        try {
+            return type + ";" + srcID + ";" + broadcastID + ";" + packetID + ";" + new String(data, Constants.encoding);
+        } catch (UnsupportedEncodingException e) {
+            // TODO Auto-generated catch block
+            e.printStackTrace();
+            return "error encoding string";
+        }
     }
 
 
     @Override
-    public byte[] toBytes() {
-        return this.toString().getBytes();
+    public byte[] toBytes() throws UnsupportedEncodingException {
+        byte[] bytes = this.toString().getBytes(Constants.encoding);
+        //Log.d("toBytes", "toBytes returning: "+new String(bytes, Constants.encoding));
+        return bytes;
     }
 
 
     @Override
     public void parseBytes(byte[] rawPdu) throws BadPduFormatException {
+        String tag = "DataMsg:parseBytes";
         String[] s = new String(rawPdu).split(";", 7);
         if (s.length != 5) { throw new BadPduFormatException(
                                                              "RREQ_DATA: could not split "
@@ -86,6 +96,7 @@ public class DataMsg implements MeshPduInterface {
             broadcastID = Integer.parseInt(s[2]);
             packetID = Integer.parseInt(s[3]);
             data = s[4].getBytes(Constants.encoding);
+            //Log.d(tag, "parsed bytes to DataMsg: "+this.toReadableString());
         } catch (NumberFormatException e) {
             throw new BadPduFormatException(
                                             "RREQ: falied in parsing arguments to the desired types");
