@@ -1,5 +1,7 @@
 package com.example.meshonandroid.pdu;
 
+import java.io.UnsupportedEncodingException;
+
 import com.example.meshonandroid.Constants;
 
 import adhoc.aodv.exception.BadPduFormatException;
@@ -46,9 +48,9 @@ public class DataMsg implements MeshPduInterface {
      * public void incrementHopCount(){ hopCount++; }
      */
 
-    public String toReadableString() {
+    public String toReadableString() throws UnsupportedEncodingException {
         return "type:" + type + "; srcID:" + srcID + "; broadcastID:" + broadcastID + "; packetID:"
-               + packetID + "; data:"+String.valueOf(data);
+               + packetID + "; data:"+new String(data, Constants.encoding);
     }
 
 
@@ -70,7 +72,7 @@ public class DataMsg implements MeshPduInterface {
         if (s.length != 5) { throw new BadPduFormatException(
                                                              "RREQ_DATA: could not split "
                                                                  + "the expected # of arguments from rawPdu. "
-                                                                 + "Expecteded 7 args but were given "
+                                                                 + "Expecteded 5 args but were given "
                                                                  + s.length); }
         try {
             type = Byte.parseByte(s[0]);
@@ -83,10 +85,13 @@ public class DataMsg implements MeshPduInterface {
             srcID = Integer.parseInt(s[1]);
             broadcastID = Integer.parseInt(s[2]);
             packetID = Integer.parseInt(s[3]);
-            data = s[4].getBytes();
+            data = s[4].getBytes(Constants.encoding);
         } catch (NumberFormatException e) {
             throw new BadPduFormatException(
                                             "RREQ: falied in parsing arguments to the desired types");
+        } catch (UnsupportedEncodingException e) {
+            // TODO Auto-generated catch block
+            e.printStackTrace();
         }
     }
 

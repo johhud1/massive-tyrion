@@ -4,6 +4,8 @@ import java.net.BindException;
 import java.net.NetworkInterface;
 import java.net.SocketException;
 import java.net.UnknownHostException;
+import java.util.Observable;
+import java.util.Observer;
 
 import com.example.meshonandroid.pdu.AODVObserver;
 import com.example.meshonandroid.pdu.ExitNodeReqPDU;
@@ -21,12 +23,14 @@ import android.widget.TextView;
 
 
 
-public class MainActivity extends Activity {
+public class MainActivity extends Activity implements Observer{
 
     int lastBroadcastId = 0;
     int lastDataRRId=0;
     int myContactID;
     Node myNode;
+
+    private TextView outputTV;
 
 
     @Override
@@ -34,6 +38,7 @@ public class MainActivity extends Activity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
         Button sendRreqData = (Button) findViewById(R.id.rreqdata_req);
+        TextView outField = (TextView) findViewById(R.id.recvd_message_tv);
 
         myContactID = getMyID();
 
@@ -101,5 +106,14 @@ public class MainActivity extends Activity {
             e.printStackTrace();
             return -1;
         }
+    }
+
+    @Override
+    public void update(Observable arg0, Object arg1) {
+        String tag = "MainActivity:update";
+        Log.d(tag, "got update from Observable: "+arg0.toString());
+        String update = (String)arg1;
+        outputTV.setText(outputTV.getText()+"\n"+update);
+
     }
 }

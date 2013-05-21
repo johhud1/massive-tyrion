@@ -1,5 +1,6 @@
 package com.example.meshonandroid.pdu;
 
+import java.io.UnsupportedEncodingException;
 import java.util.Observable;
 import java.util.Observer;
 
@@ -13,12 +14,11 @@ import adhoc.aodv.ObserverConst;
 import adhoc.aodv.Node.MessageToObserver;
 import adhoc.aodv.Node.PacketToObserver;
 import adhoc.aodv.exception.BadPduFormatException;
-import android.app.Activity;
 import android.util.Log;
-import android.widget.TextView;
 
 
-public class AODVObserver implements Observer {
+
+public class AODVObserver extends Observable implements Observer {
     private TrafficManager mTrafficMan;
     private DataManager mDataMan;
     private MainActivity mActivity;
@@ -26,7 +26,8 @@ public class AODVObserver implements Observer {
     public AODVObserver(Node node, int mId, MainActivity mainActivity) {
         node.addObserver(this);
         mTrafficMan =  new TrafficManager(true, node, mId);
-        mActivity = mainActivity;
+        mDataMan = new DataManager(node);
+        this.addObserver(mainActivity);
     }
 
     @Override
@@ -70,25 +71,25 @@ public class AODVObserver implements Observer {
             int type = Integer.parseInt(split[0]);
             switch (type) {
             case Constants.PDU_DATAMSG:
-                System.out.println("Received: Msg");
                 DataMsg dataMsg = new DataMsg();
                 dataMsg.parseBytes(data);
-                mActivity.setTextField("recieved PDU_DATAMSG: "+dataMsg.toReadableString());
+                System.out.println("Received DataMsg: "+dataMsg.toReadableString());
+                notifyObservers("recieved PDU_DATAMSG: "+dataMsg.toReadableString());
                 break;
             case Constants.PDU_EXITNODEREQ:
                 System.out.println("Received: Exit Node Request msg");
                 ExitNodeReqPDU exitMsg = new ExitNodeReqPDU();
                 exitMsg.parseBytes(data);
                 Log.d(tag, exitMsg.toReadableString());
-                mActivity.setTextField("recieved PDU_EXITNODEREQ: "+exitMsg.toReadableString());
+                notifyObservers("recieved PDU_EXITNODEREQ: "+exitMsg.toReadableString());
                 mTrafficMan.connectionRequested(senderID); //sets up neccessary state and send reply;
                 break;
             case Constants.PDU_EXITNODEREP:
                 System.out.println("Received: PDU Exit Node Reply msg");
-                DataMsg dataForward = new DataMsg();
-                dataForward.parseBytes(data);
-                Log.d(tag, dataForward.toReadableString());
-                mActivity.setTextField("recieved PDU_EXITNODEREP: "+dataForward.toReadableString());
+                ExitNodeRepPDU exitRep = new ExitNodeRepPDU();
+                exitRep.parseBytes(data);
+                Log.d(tag, exitRep.toReadableString());
+                notifyObservers("recieved PDU_EXITNODEREP: "+exitRep.toReadableString());
                 mDataMan.sendDataMsg(senderID);
 
                 //ExitNodeRepPDU repMsg = new ExitNodeRepPDU();
@@ -120,10 +121,15 @@ public class AODVObserver implements Observer {
                 break;
             }
         } catch (NumberFormatException e) {
+            e.printStackTrace();
             //discard the message.
         } catch (BadPduFormatException e) {
+            e.printStackTrace();
             //discard the message
             // Message is in the domain of invalid messages
+        } catch (UnsupportedEncodingException e) {
+            // TODO Auto-generated catch block
+            e.printStackTrace();
         }
     }
 
