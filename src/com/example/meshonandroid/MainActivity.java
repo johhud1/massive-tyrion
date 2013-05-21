@@ -6,6 +6,11 @@ import java.net.SocketException;
 import java.net.UnknownHostException;
 import java.util.Observable;
 import java.util.Observer;
+import java.util.Properties;
+
+import org.apache.http.HttpHost;
+
+import proxyServer.ProxyListener;
 
 import com.example.meshonandroid.pdu.AODVObserver;
 import com.example.meshonandroid.pdu.ExitNodeReqPDU;
@@ -18,6 +23,7 @@ import android.util.Log;
 import android.view.Menu;
 import android.view.View;
 import android.view.View.OnClickListener;
+import android.webkit.WebView;
 import android.widget.Button;
 import android.widget.TextView;
 
@@ -69,6 +75,15 @@ public class MainActivity extends Activity implements Observer{
                 }
             }
         });
+        Properties systemProperties = System.getProperties();
+        systemProperties.setProperty( "http.proxyHost", "localhost");
+        systemProperties.setProperty( "http.proxyPort", "8080");
+        ProxyListener pl = new ProxyListener();
+        pl.start();
+
+        WebView wv = (WebView) findViewById(R.id.wv);
+        wv.loadUrl("www.google.com");
+
     }
 
     public void setTextField(String text){

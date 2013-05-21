@@ -30,4 +30,11 @@
         android:layout_marginTop="26dp"
         android:text="No Messages so far" />
 
+    <WebView
+        android:id="@+id/wv"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:layout_alignLeft="@+id/recvd_message_tv"
+        android:layout_below="@+id/recvd_message_tv" />
+
 </RelativeLayout>
