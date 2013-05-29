@@ -104,14 +104,7 @@ public class ProxyThread extends Thread implements Observer{
                 in.close();
             }
             */
-            if (socket != null) {
-                try {
-                    socket.close();
-                } catch (IOException e) {
-                    // TODO Auto-generated catch block
-                    e.printStackTrace();
-                }
-            }
+
     }
 
         @Override
@@ -131,6 +124,14 @@ public class ProxyThread extends Thread implements Observer{
                 } catch (IOException e1) {
                     // TODO Auto-generated catch block
                     e1.printStackTrace();
+                }
+                if (socket != null) {
+                    try {
+                        socket.close();
+                    } catch (IOException e) {
+                        // TODO Auto-generated catch block
+                        e.printStackTrace();
+                    }
                 }
                 break;
             case Constants.PDU_EXITNODEREP:

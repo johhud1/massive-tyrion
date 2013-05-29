@@ -28,6 +28,7 @@ public class AODVObserver extends Observable implements Observer {
         mTrafficMan =  new TrafficManager(true, node, mId);
         mDataMan = new DataManager(node);
         this.addObserver(mainActivity);
+        this.addObserver(mTrafficMan);
     }
 
     @Override
@@ -66,6 +67,7 @@ public class AODVObserver extends Observable implements Observer {
 
     private void parseMessage(int senderID, byte[] data){
         String tag = "AODVObserver:parseMessage";
+        setChanged();
         String[] split = new String(data).split(";",2);
         try {
             int type = Integer.parseInt(split[0]);
@@ -91,7 +93,9 @@ public class AODVObserver extends Observable implements Observer {
                 ExitNodeRepPDU exitRep = new ExitNodeRepPDU();
                 exitRep.parseBytes(data);
                 Log.d(tag, exitRep.toReadableString());
+                boolean  c = hasChanged();
                 notifyObservers(exitRep);
+                c = hasChanged();
                 //notifyObservers("recieved PDU_EXITNODEREP: "+exitRep.toReadableString());
                 mDataMan.sendDataMsg(senderID);
 

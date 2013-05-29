@@ -18,10 +18,6 @@ public class ProxyListener extends Thread{
     Node node;
     AODVObserver aodvobs;
 
-    public ProxyListener(Node node, AODVObserver obs){
-        new ProxyListener(port, node, obs);
-    }
-
     public ProxyListener(int port, Node node, AODVObserver aodvobs) {
         super();
         this.port = port;
