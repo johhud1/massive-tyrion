@@ -106,11 +106,11 @@ public class DataMsg implements MeshPduInterface {
         }
     }
 
-    public byte[] getBytes(){
+    public byte[] getDataBytes(){
         return data;
     }
 
-    public void setBytes(byte[] b){
+    public void setDataBytes(byte[] b){
         data = b;
     }
 
@@ -124,6 +124,10 @@ public class DataMsg implements MeshPduInterface {
         return packetID;
     }
 
+    @Override
+    public int getSouceID() {
+        return this.srcID;
+    }
 
     public void setPacketID(int id) {
         packetID = id;

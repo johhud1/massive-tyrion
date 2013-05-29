@@ -106,6 +106,11 @@ public class ExitNodeReqPDU implements MeshPduInterface {
         return packetID;
     }
 
+    @Override
+    public int getSouceID() {
+        // TODO Auto-generated method stub
+        return this.srcID;
+    }
 
     public void setPacketID(int id) {
         packetID = id;

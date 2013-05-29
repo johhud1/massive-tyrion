@@ -74,14 +74,16 @@ public class AODVObserver extends Observable implements Observer {
                 DataMsg dataMsg = new DataMsg();
                 dataMsg.parseBytes(data);
                 System.out.println("Received DataMsg: "+dataMsg.toReadableString());
-                notifyObservers("recieved PDU_DATAMSG: "+dataMsg.toReadableString());
+                notifyObservers(dataMsg);
+                //notifyObservers("recieved PDU_DATAMSG: "+dataMsg.toReadableString());
                 break;
             case Constants.PDU_EXITNODEREQ:
                 System.out.println("Received: Exit Node Request msg");
                 ExitNodeReqPDU exitMsg = new ExitNodeReqPDU();
                 exitMsg.parseBytes(data);
                 Log.d(tag, exitMsg.toReadableString());
-                notifyObservers("recieved PDU_EXITNODEREQ: "+exitMsg.toReadableString());
+                notifyObservers(exitMsg);
+                //notifyObservers("recieved PDU_EXITNODEREQ: "+exitMsg.toReadableString());
                 mTrafficMan.connectionRequested(senderID); //sets up neccessary state and send reply;
                 break;
             case Constants.PDU_EXITNODEREP:
@@ -89,7 +91,8 @@ public class AODVObserver extends Observable implements Observer {
                 ExitNodeRepPDU exitRep = new ExitNodeRepPDU();
                 exitRep.parseBytes(data);
                 Log.d(tag, exitRep.toReadableString());
-                notifyObservers("recieved PDU_EXITNODEREP: "+exitRep.toReadableString());
+                notifyObservers(exitRep);
+                //notifyObservers("recieved PDU_EXITNODEREP: "+exitRep.toReadableString());
                 mDataMan.sendDataMsg(senderID);
 
                 //ExitNodeRepPDU repMsg = new ExitNodeRepPDU();

@@ -4,35 +4,48 @@ import java.net.*;
 import java.io.*;
 import java.util.*;
 
-public class ProxyThread extends Thread {
+import com.example.meshonandroid.Constants;
+import com.example.meshonandroid.pdu.AODVObserver;
+import com.example.meshonandroid.pdu.DataMsg;
+import com.example.meshonandroid.pdu.ExitNodeReqPDU;
+import com.example.meshonandroid.pdu.MeshPduInterface;
+
+import adhoc.aodv.Node;
+import android.util.Log;
+
+public class ProxyThread extends Thread implements Observer{
 
     private Socket socket = null;
     private static final int BUFFER_SIZE = 32768;
+    private Node node;
+
+    //
+    private DataOutputStream out;
+    private String httpRequest;
 
 
-    public ProxyThread(Socket socket) {
+    public ProxyThread(Socket socket, Node node, AODVObserver aodvObs) {
         super("ProxyThread");
         this.socket = socket;
+        this.node = node;
+        aodvObs.addObserver(this);
     }
 
 
     public void run() {
-        // get input from user
-        // send request to server
-        // get response from server
-        // send response to user
-
         try {
-            DataOutputStream out = new DataOutputStream(socket.getOutputStream());
+            out = new DataOutputStream(socket.getOutputStream());
             BufferedReader in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
 
             String inputLine, outputLine;
             int cnt = 0;
             String urlToCall = "";
+            httpRequest = new String();
             // /////////////////////////////////
             // begin get request from client
             while ((inputLine = in.readLine()) != null) {
                 try {
+                    httpRequest += inputLine + '\n';
                     StringTokenizer tok = new StringTokenizer(inputLine);
                     tok.nextToken();
                 } catch (Exception e) {
@@ -49,47 +62,19 @@ public class ProxyThread extends Thread {
                 cnt++;
             }
             // end get request from client
-            // /////////////////////////////////
 
-            BufferedReader rd = null;
-            try {
-                // System.out.println("sending request
-                // to real server for url: "
-                // + urlToCall);
-                // /////////////////////////////////
-                // begin send request to server, get response from server
-                URL url = new URL(urlToCall);
-                URLConnection conn = url.openConnection();
-                conn.setDoInput(true);
-                // not doing HTTP posts
-                conn.setDoOutput(false);
-                // System.out.println("Type is: "
-                // + conn.getContentType());
-                // System.out.println("content length: "
-                // + conn.getContentLength());
-                // System.out.println("allowed user interaction: "
-                // + conn.getAllowUserInteraction());
-                // System.out.println("content encoding: "
-                // + conn.getContentEncoding());
-                // System.out.println("content type: "
-                // + conn.getContentType());
 
-                // Get the response
-                InputStream is = null;
-                HttpURLConnection huc = (HttpURLConnection) conn;
-                if (conn.getContentLength() > 0) {
-                    try {
-                        is = conn.getInputStream();
-                        rd = new BufferedReader(new InputStreamReader(is));
-                    } catch (IOException ioe) {
-                        System.out.println("********* IO EXCEPTION **********: " + ioe);
-                    }
-                }
-                // end send request to server, get response from server
-                // /////////////////////////////////
+
+            //begin send request to mesh network
+            //just gonna broadcast the request, anyone with a connection can pick it up and respond
+            node.sendData(0, adhoc.aodv.Constants.BROADCAST_ADDRESS, new ExitNodeReqPDU(node.getNodeAddress(), 0, 0).toBytes());
+            //send client data in update (recieved notifications from AODVObserver)
+
+            //end send request to mesh network
 
                 // /////////////////////////////////
                 // begin send response to client
+            /*
                 byte by[] = new byte[BUFFER_SIZE];
                 int index = is.read(by, 0, BUFFER_SIZE);
                 while (index != -1) {
@@ -97,7 +82,7 @@ public class ProxyThread extends Thread {
                     index = is.read(by, 0, BUFFER_SIZE);
                 }
                 out.flush();
-
+*/
                 // end send response to client
                 // /////////////////////////////////
             } catch (Exception e) {
@@ -105,9 +90,9 @@ public class ProxyThread extends Thread {
                 System.err.println("Encountered exception: " + e);
                 // encountered error - just send nothing back, so
                 // processing can continue
-                out.writeBytes("err");
+                //out.writeBytes("err");
             }
-
+/*
             // close out all resources
             if (rd != null) {
                 rd.close();
@@ -118,12 +103,50 @@ public class ProxyThread extends Thread {
             if (in != null) {
                 in.close();
             }
+            */
             if (socket != null) {
-                socket.close();
+                try {
+                    socket.close();
+                } catch (IOException e) {
+                    // TODO Auto-generated catch block
+                    e.printStackTrace();
+                }
             }
+    }
 
-        } catch (IOException e) {
-            e.printStackTrace();
+        @Override
+        public void update(Observable observable, Object data) {
+            String tag = "ProxyThread:update";
+            MeshPduInterface msg = (MeshPduInterface) data;
+            Log.d(tag, "got msg: "+msg.toString());
+            //split on two notifications here : (route request reply - in which case send data to those addresses; and msg data in which case, display returned data to client)
+            switch(msg.getPduType()){
+            case Constants.PDU_DATAMSG:
+                Log.d(tag, "got pdu_datamsg");
+                DataMsg dmsg = (DataMsg)msg;
+                byte[] bytes = dmsg.getDataBytes();
+                try {
+                    out.write(bytes, 0, bytes.length);
+                    out.flush();
+                } catch (IOException e1) {
+                    // TODO Auto-generated catch block
+                    e1.printStackTrace();
+                }
+                break;
+            case Constants.PDU_EXITNODEREP:
+                Log.d(tag, "got pdu_exitnoderep");
+                try {
+                    node.sendData(1, 1, new DataMsg(node.getNodeAddress(), 1, 1, httpRequest.getBytes(Constants.encoding)).toBytes());
+                } catch (UnsupportedEncodingException e) {
+                    // TODO Auto-generated catch block
+                    e.printStackTrace();
+                }
+                break;
+            case Constants.PDU_EXITNODEREQ:
+                Log.d(tag, "got PDU_EXITNODEREQ");
+                //do nothing
+
+
         }
     }
 }

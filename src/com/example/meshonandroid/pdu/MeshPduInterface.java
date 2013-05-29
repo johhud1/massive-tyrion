@@ -16,6 +16,8 @@ public interface MeshPduInterface {
 
     public byte getPduType();
 
+    public int getSouceID();
+
     /*
     public int getSequenceNumber();
 
