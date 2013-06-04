@@ -64,7 +64,7 @@ public class ExitNodeRepPDU implements MeshPduInterface {
         return type + ";" + srcId + ";" + broadcastId + ";" + packetId;
     }
    @Override
-   public int getSouceID() {
+   public int getSourceID() {
        // TODO Auto-generated method stub
        return this.srcId;
    }

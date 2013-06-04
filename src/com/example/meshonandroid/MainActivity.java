@@ -28,6 +28,8 @@ import com.example.meshonandroid.pdu.ExitNodeReqPDU;
 import adhoc.aodv.Node;
 import adhoc.aodv.exception.InvalidNodeAddressException;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Message;
 import android.os.StrictMode;
 import android.annotation.SuppressLint;
 import android.app.Activity;
@@ -47,6 +49,7 @@ public class MainActivity extends Activity implements Observer {
     int lastDataRRId = 0;
     int myContactID;
     Node myNode;
+    Handler handler;
 
     private TextView outputTV;
 
@@ -63,6 +66,13 @@ public class MainActivity extends Activity implements Observer {
         setContentView(R.layout.activity_main);
         Button sendRreqData = (Button) findViewById(R.id.rreqdata_req);
         outputTV= (TextView) findViewById(R.id.recvd_message_tv);
+        handler = new Handler() {
+            @SuppressWarnings("unchecked")
+            @Override
+            public void handleMessage(Message msg) {
+                outputTV.setText(outputTV.getText() + "\n" + msg.getData().getString("msg"));
+            }
+        };
 
         myContactID = getMyID();
 
@@ -95,9 +105,9 @@ public class MainActivity extends Activity implements Observer {
                         new ExitNodeReqPDU(myContactID, getBroadcastID(), getDataRRID());
                     myNode.sendData(dr.getPacketID(), 255, dr.toBytes());
                     */
-                    HttpURLConnection urlConn;
+                    URLConnection urlConn;
                     try {
-                        URL url  = new URL("http://www.google.com");
+                        URL url  = new URL("http://192.168.1.1");
                         Proxy proxy = new Proxy(Proxy.Type.HTTP, new InetSocketAddress("localhost", 8080));
 
                         InputStream response = url.openConnection(proxy).getInputStream();
@@ -122,6 +132,7 @@ public class MainActivity extends Activity implements Observer {
             e.printStackTrace();
         }
         */
+
     }
 
 
@@ -170,8 +181,11 @@ public class MainActivity extends Activity implements Observer {
     public void update(Observable arg0, Object arg1) {
         String tag = "MainActivity:update";
         Log.d(tag, "got update from Observable: " + arg1.toString());
-        String update = arg1.toString();
-        outputTV.setText(outputTV.getText() + "\n" + update);
+        Message m = new Message();
+        Bundle b = new Bundle();
+        b.putString("msg", arg1.toString());
+        m.setData(b);
+        handler.sendMessage(m);
 
     }
 }

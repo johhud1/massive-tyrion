@@ -125,7 +125,7 @@ public class DataMsg implements MeshPduInterface {
     }
 
     @Override
-    public int getSouceID() {
+    public int getSourceID() {
         return this.srcID;
     }
 

@@ -11,6 +11,7 @@ import com.example.meshonandroid.pdu.ExitNodeReqPDU;
 import com.example.meshonandroid.pdu.MeshPduInterface;
 
 import adhoc.aodv.Node;
+import android.util.Base64;
 import android.util.Log;
 
 public class ProxyThread extends Thread implements Observer{
@@ -117,7 +118,14 @@ public class ProxyThread extends Thread implements Observer{
             case Constants.PDU_DATAMSG:
                 Log.d(tag, "got pdu_datamsg");
                 DataMsg dmsg = (DataMsg)msg;
-                byte[] bytes = dmsg.getDataBytes();
+                byte[] bytes = Base64.decode(dmsg.getDataBytes(), 0);
+                try {
+                    String resp = new String(bytes, Constants.encoding);
+                    Log.d(tag, "proxy got response: "+resp);
+                } catch (UnsupportedEncodingException e2) {
+                    // TODO Auto-generated catch block
+                    e2.printStackTrace();
+                }
                 try {
                     out.write(bytes, 0, bytes.length);
                     out.flush();
@@ -135,9 +143,9 @@ public class ProxyThread extends Thread implements Observer{
                 }
                 break;
             case Constants.PDU_EXITNODEREP:
-                Log.d(tag, "got pdu_exitnoderep");
+                Log.d(tag, "got pdu_exitnoderep: sending off:"+httpRequest);
                 try {
-                    node.sendData(1, 1, new DataMsg(node.getNodeAddress(), 1, 1, httpRequest.getBytes(Constants.encoding)).toBytes());
+                    node.sendData(1, msg.getSourceID(), new DataMsg(node.getNodeAddress(), 1, 1, Base64.encode(httpRequest.getBytes(Constants.encoding), 0)).toBytes());
                 } catch (UnsupportedEncodingException e) {
                     // TODO Auto-generated catch block
                     e.printStackTrace();
