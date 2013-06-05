@@ -14,7 +14,7 @@ public class DataManager {
     public DataManager(Node node){
         mNode = node;
     }
-
+/*
     public void sendDataMsg(int dest){
         String tag = "DataManager:sendDataMsg";
         String msg = "Hello";
@@ -32,5 +32,5 @@ public class DataManager {
             // TODO Auto-generated catch block
             e.printStackTrace();
         }
-    }
+    }*/
 }

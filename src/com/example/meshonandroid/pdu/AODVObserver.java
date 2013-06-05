@@ -72,6 +72,20 @@ public class AODVObserver extends Observable implements Observer {
         try {
             int type = Integer.parseInt(split[0]);
             switch (type) {
+            case Constants.PDU_DATAREQMSG:
+                DataMsg dataReqMsg = new DataReqMsg();
+                dataReqMsg.parseBytes(data);
+                System.out.println("Received DataReqMsg: "+dataReqMsg.toReadableString());
+                notifyObservers(dataReqMsg);
+                //notifyObservers("recieved PDU_DATAMSG: "+dataMsg.toReadableString());
+                break;
+            case Constants.PDU_DATAREPMSG:
+                DataMsg dataRepMsg = new DataRepMsg();
+                dataRepMsg.parseBytes(data);
+                System.out.println("Received DataRepMsg: "+dataRepMsg.toReadableString());
+                notifyObservers(dataRepMsg);
+                //notifyObservers("recieved PDU_DATAMSG: "+dataMsg.toReadableString());
+                break;
             case Constants.PDU_DATAMSG:
                 DataMsg dataMsg = new DataMsg();
                 dataMsg.parseBytes(data);
@@ -97,7 +111,7 @@ public class AODVObserver extends Observable implements Observer {
                 notifyObservers(exitRep);
                 c = hasChanged();
                 //notifyObservers("recieved PDU_EXITNODEREP: "+exitRep.toReadableString());
-                mDataMan.sendDataMsg(senderID);
+                //mDataMan.sendDataMsg(senderID);
 
                 //ExitNodeRepPDU repMsg = new ExitNodeRepPDU();
                 //repMsg.parseBytes(data);

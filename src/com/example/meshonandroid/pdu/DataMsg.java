@@ -9,11 +9,11 @@ import android.util.Log;
 
 public class DataMsg implements MeshPduInterface {
 
-    private byte type;
-    private int srcID;
-    private int broadcastID;
-    private int packetID;
-    private byte[] data;
+    protected byte type;
+    protected int srcID;
+    protected int broadcastID;
+    protected int packetID;
+    protected byte[] data;
 
     public DataMsg(){};
     /**
@@ -27,10 +27,10 @@ public class DataMsg implements MeshPduInterface {
      *            along with the source address this number uniquely identifies
      *            this route request PDU
      */
-    public DataMsg(int srcId, int packetID, int broadcastId, byte[] data) {
+    public DataMsg(int srcId, int packetID, int broadcastId, byte type, byte[] data) {
         this.srcID = srcId;
         this.packetID = packetID;
-        type = Constants.PDU_DATAMSG;
+        this.type = type;
         this.broadcastID = broadcastId;
         this.data = data;
     }

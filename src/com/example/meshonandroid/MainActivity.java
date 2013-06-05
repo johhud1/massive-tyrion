@@ -1,5 +1,6 @@
 package com.example.meshonandroid;
 
+import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -111,7 +112,16 @@ public class MainActivity extends Activity implements Observer {
                         Proxy proxy = new Proxy(Proxy.Type.HTTP, new InetSocketAddress("localhost", 8080));
 
                         InputStream response = url.openConnection(proxy).getInputStream();
-                        System.out.println(response.read());
+                        byte[] responseBuf = new byte[512];
+                        ByteArrayOutputStream in = new ByteArrayOutputStream();
+                        int offset=0;
+                        while(response.read(responseBuf, offset, 512)>0){
+                            in.write(responseBuf);
+                        }
+                        //setTextField("resp: "+ in.toString(Constants.encoding));
+                        String htmlString = in.toString(Constants.encoding);
+                        setWebView(htmlString);
+                        response.close();
 
                     } catch (IOException e) {
                         e.printStackTrace();
@@ -135,6 +145,10 @@ public class MainActivity extends Activity implements Observer {
 
     }
 
+    public void setWebView(String htmlString){
+        WebView wv = (WebView) findViewById(R.id.wv);
+        wv.loadData(htmlString, "text/html", Constants.encoding);
+    }
 
     public void setTextField(String text) {
         TextView outField = (TextView) findViewById(R.id.recvd_message_tv);
@@ -185,7 +199,7 @@ public class MainActivity extends Activity implements Observer {
         Bundle b = new Bundle();
         b.putString("msg", arg1.toString());
         m.setData(b);
-        handler.sendMessage(m);
+        //handler.sendMessage(m);
 
     }
 }

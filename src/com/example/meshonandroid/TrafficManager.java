@@ -1,19 +1,26 @@
 package com.example.meshonandroid;
 
+import java.io.BufferedInputStream;
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.net.Socket;
+import java.net.URL;
 import java.net.URLConnection;
 import java.util.Observable;
 import java.util.Observer;
 
 import org.apache.http.HttpClientConnection;
 import org.apache.http.HttpException;
+import org.apache.http.HttpHost;
 import org.apache.http.HttpRequest;
 import org.apache.http.HttpRequestFactory;
 import org.apache.http.HttpResponse;
+import org.apache.http.client.ClientProtocolException;
 import org.apache.http.client.HttpClient;
 import org.apache.http.client.ResponseHandler;
+import org.apache.http.client.methods.HttpGet;
 import org.apache.http.impl.DefaultHttpClientConnection;
 import org.apache.http.impl.DefaultHttpRequestFactory;
 import org.apache.http.impl.client.DefaultHttpClient;
@@ -27,6 +34,7 @@ import org.apache.http.protocol.HttpRequestExecutor;
 import proxyServer.ApacheRequestFactory;
 
 import com.example.meshonandroid.pdu.DataMsg;
+import com.example.meshonandroid.pdu.DataRepMsg;
 import com.example.meshonandroid.pdu.ExitNodeRepPDU;
 import com.example.meshonandroid.pdu.MeshPduInterface;
 
@@ -49,6 +57,8 @@ public class TrafficManager implements Observer {
                           + "Etag: \"3f80f-1b6-3e1cb03b\"\n"
                           + "Content-Type: text/html; charset=UTF-8\n" + "Content-Length: 21\n"
                           + "Connection: close\n" + "request recieved\r\n\r\n";
+    private static int BUFSIZE = 512;
+    private byte[] responseBuf = new byte[BUFSIZE];
 
 
     /**
@@ -89,13 +99,44 @@ public class TrafficManager implements Observer {
         MeshPduInterface msg = (MeshPduInterface) m;
         Log.d(tag, "got update. msg: " + m.toString());
         switch (msg.getPduType()) {
-        case Constants.PDU_DATAMSG:
+        case Constants.PDU_DATAREQMSG:
             DataMsg dmsg = (DataMsg) msg;
             try {
                 //Log.d(tag, "got data request, sending response: " + fakeResp);
                 String httpRequest = new String(Base64.decode(dmsg.getDataBytes(), 0), Constants.encoding);
                 Log.d(tag, "got data msg. Data (request?): "+httpRequest);
                 HttpRequest rq = ApacheRequestFactory.create(httpRequest);
+                ByteArrayOutputStream out = new ByteArrayOutputStream();
+                DefaultHttpClient dhc = new DefaultHttpClient();
+                try {
+                    //dhc.execute(new HttpHost("192.168.1.1"), rq);
+                    HttpHost targetHost = new HttpHost(rq.getFirstHeader("Host").getValue());
+                    HttpResponse myresp = dhc.execute(targetHost, rq);
+                    BufferedInputStream respStream = new BufferedInputStream(myresp.getEntity().getContent());
+                    long contLength = myresp.getEntity().getContentLength();
+                    Log.d(tag, "response Entity length: "+contLength);
+
+                    int offset = 0;
+                    if(contLength > 0){
+                        responseBuf = new byte[(int) contLength];
+                        respStream.read(responseBuf);
+                        out.write(responseBuf);
+                    } else {
+                        while(respStream.read(responseBuf, offset, BUFSIZE)>0){
+                            out.write(responseBuf);
+                        }
+                    }
+
+                    //respStream.read(responseBuf);
+                    //Log.d(tag, new String(responseBuf, Constants.encoding));
+                } catch (ClientProtocolException e2) {
+                    // TODO Auto-generated catch block
+                    e2.printStackTrace();
+                } catch (IOException e2) {
+                    // TODO Auto-generated catch block
+                    e2.printStackTrace();
+                }
+                /*
                 DefaultHttpClientConnection hcc = new DefaultHttpClientConnection();
                 try {
                     hcc.bind(new Socket(rq.getRequestLine().getUri(), 80), rq.getParams());
@@ -109,17 +150,17 @@ public class TrafficManager implements Observer {
                 } catch (HttpException e) {
                     // TODO Auto-generated catch block
                     e.printStackTrace();
-                }
+                }*/
                 int pid = dmsg.getPacketID() + 1;
                 DataMsg respData =
-                    new DataMsg(mContactId, pid, 0, Base64.encode(fakeResp.getBytes("UTF-8"), 0));
+                    new DataRepMsg(mContactId, pid, 0, Base64.encode(out.toByteArray(), 0));
                 mNode.sendData(pid, dmsg.getSourceID(), respData.toBytes());
             } catch (UnsupportedEncodingException e) {
                 e.printStackTrace();
             }
             break;
         default:
-            Log.d(tag, "got something not PDU_DATAMSG");
+            Log.d(tag, "got something not PDU_DATAREQMSG");
         }
 
     }
