@@ -115,10 +115,10 @@ public class TrafficManager implements Observer {
                     BufferedInputStream respStream = new BufferedInputStream(myresp.getEntity().getContent());
                     long contLength = myresp.getEntity().getContentLength();
                     Log.d(tag, "response Entity length: "+contLength);
-
+                    int bufLength = (int) contLength;
                     int offset = 0;
                     if(contLength > 0){
-                        responseBuf = new byte[(int) contLength];
+                        responseBuf = new byte[bufLength];
                         respStream.read(responseBuf);
                         out.write(responseBuf);
                     } else {

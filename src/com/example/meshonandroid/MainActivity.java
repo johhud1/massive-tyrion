@@ -34,23 +34,25 @@ import android.os.Message;
 import android.os.StrictMode;
 import android.annotation.SuppressLint;
 import android.app.Activity;
+import android.support.v4.widget.SearchViewCompat.OnCloseListenerCompat;
 import android.util.Log;
 import android.view.Menu;
 import android.view.View;
 import android.view.View.OnClickListener;
 import android.webkit.WebView;
 import android.widget.Button;
+import android.widget.EditText;
 import android.widget.TextView;
 
 
 
-public class MainActivity extends Activity implements Observer {
+public class MainActivity extends Activity {
 
     int lastBroadcastId = 0;
     int lastDataRRId = 0;
     int myContactID;
     Node myNode;
-    Handler handler;
+    public Handler handler;
 
     private TextView outputTV;
 
@@ -65,7 +67,15 @@ public class MainActivity extends Activity implements Observer {
 
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
-        Button sendRreqData = (Button) findViewById(R.id.rreqdata_req);
+        EditText urlField = (EditText) findViewById(R.id.url_et);
+        Button getUrlButton = (Button) findViewById(R.id.req_url);
+        Button get1921Button = (Button) findViewById(R.id.req_192_1);
+        Button get192136Button = (Button) findViewById(R.id.req_192_136);
+
+        getUrlButton.setOnClickListener(new urlReqOnClickListener(urlField.getText().toString()));
+        get192136Button.setOnClickListener(new urlReqOnClickListener("http://192.168.1.136"));
+        get1921Button.setOnClickListener(new urlReqOnClickListener("http://192.168.1.1"));
+
         outputTV= (TextView) findViewById(R.id.recvd_message_tv);
         handler = new Handler() {
             @SuppressWarnings("unchecked")
@@ -96,39 +106,8 @@ public class MainActivity extends Activity implements Observer {
             // TODO Auto-generated catch block
             e.printStackTrace();
         }
-        sendRreqData.setOnClickListener(new OnClickListener() {
 
-            @Override
-            public void onClick(View v) {
-                if (myNode != null) {
-                    /*
-                    ExitNodeReqPDU dr =
-                        new ExitNodeReqPDU(myContactID, getBroadcastID(), getDataRRID());
-                    myNode.sendData(dr.getPacketID(), 255, dr.toBytes());
-                    */
-                    URLConnection urlConn;
-                    try {
-                        URL url  = new URL("http://192.168.1.1");
-                        Proxy proxy = new Proxy(Proxy.Type.HTTP, new InetSocketAddress("localhost", 8080));
 
-                        InputStream response = url.openConnection(proxy).getInputStream();
-                        byte[] responseBuf = new byte[512];
-                        ByteArrayOutputStream in = new ByteArrayOutputStream();
-                        int offset=0;
-                        while(response.read(responseBuf, offset, 512)>0){
-                            in.write(responseBuf);
-                        }
-                        //setTextField("resp: "+ in.toString(Constants.encoding));
-                        String htmlString = in.toString(Constants.encoding);
-                        setWebView(htmlString);
-                        response.close();
-
-                    } catch (IOException e) {
-                        e.printStackTrace();
-                    }
-                }
-            }
-        });
 /*
         HttpURLConnection urlConn;
         try {
@@ -189,8 +168,48 @@ public class MainActivity extends Activity implements Observer {
             return -1;
         }
     }
+    private class urlReqOnClickListener implements OnClickListener{
+        private String mUrl;
 
+        public urlReqOnClickListener(String url){
+            super();
+            mUrl = url;
+        }
 
+        @Override
+        public void onClick(View v) {
+            if (myNode != null) {
+                /*
+                ExitNodeReqPDU dr =
+                    new ExitNodeReqPDU(myContactID, getBroadcastID(), getDataRRID());
+                myNode.sendData(dr.getPacketID(), 255, dr.toBytes());
+                */
+                URLConnection urlConn;
+                try {
+                    URL url  = new URL(mUrl);
+                    Proxy proxy = new Proxy(Proxy.Type.HTTP, new InetSocketAddress("localhost", 8080));
+
+                    InputStream response = url.openConnection(proxy).getInputStream();
+                    byte[] responseBuf = new byte[512];
+                    ByteArrayOutputStream in = new ByteArrayOutputStream();
+                    int offset=0;
+                    while(response.read(responseBuf, offset, 512)>0){
+                        in.write(responseBuf);
+                    }
+                    //setTextField("resp: "+ in.toString(Constants.encoding));
+                    String htmlString = in.toString(Constants.encoding);
+                    setWebView(htmlString);
+                    response.close();
+
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+            }
+        }
+
+    }
+
+/*
     @Override
     public void update(Observable arg0, Object arg1) {
         String tag = "MainActivity:update";
@@ -199,7 +218,7 @@ public class MainActivity extends Activity implements Observer {
         Bundle b = new Bundle();
         b.putString("msg", arg1.toString());
         m.setData(b);
-        //handler.sendMessage(m);
+        handler.sendMessage(m);
 
-    }
+    }*/
 }

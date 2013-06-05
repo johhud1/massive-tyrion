@@ -14,6 +14,8 @@ import adhoc.aodv.ObserverConst;
 import adhoc.aodv.Node.MessageToObserver;
 import adhoc.aodv.Node.PacketToObserver;
 import adhoc.aodv.exception.BadPduFormatException;
+import android.os.Bundle;
+import android.os.Message;
 import android.util.Log;
 
 
@@ -26,8 +28,8 @@ public class AODVObserver extends Observable implements Observer {
     public AODVObserver(Node node, int mId, MainActivity mainActivity) {
         node.addObserver(this);
         mTrafficMan =  new TrafficManager(true, node, mId);
+        mActivity = mainActivity;
         mDataMan = new DataManager(node);
-        this.addObserver(mainActivity);
         this.addObserver(mTrafficMan);
     }
 
@@ -76,12 +78,14 @@ public class AODVObserver extends Observable implements Observer {
                 DataMsg dataReqMsg = new DataReqMsg();
                 dataReqMsg.parseBytes(data);
                 System.out.println("Received DataReqMsg: "+dataReqMsg.toReadableString());
+                setMainTextViewWithString("Recieved DataReqMsg");
                 notifyObservers(dataReqMsg);
                 //notifyObservers("recieved PDU_DATAMSG: "+dataMsg.toReadableString());
                 break;
             case Constants.PDU_DATAREPMSG:
                 DataMsg dataRepMsg = new DataRepMsg();
                 dataRepMsg.parseBytes(data);
+                setMainTextViewWithString("Recieved DataRepMsg");
                 System.out.println("Received DataRepMsg: "+dataRepMsg.toReadableString());
                 notifyObservers(dataRepMsg);
                 //notifyObservers("recieved PDU_DATAMSG: "+dataMsg.toReadableString());
@@ -90,11 +94,13 @@ public class AODVObserver extends Observable implements Observer {
                 DataMsg dataMsg = new DataMsg();
                 dataMsg.parseBytes(data);
                 System.out.println("Received DataMsg: "+dataMsg.toReadableString());
+                setMainTextViewWithString("Got DataMsg");
                 notifyObservers(dataMsg);
                 //notifyObservers("recieved PDU_DATAMSG: "+dataMsg.toReadableString());
                 break;
             case Constants.PDU_EXITNODEREQ:
                 System.out.println("Received: Exit Node Request msg");
+                setMainTextViewWithString("Recieved ExitNodeReq");
                 ExitNodeReqPDU exitMsg = new ExitNodeReqPDU();
                 exitMsg.parseBytes(data);
                 Log.d(tag, exitMsg.toReadableString());
@@ -104,6 +110,7 @@ public class AODVObserver extends Observable implements Observer {
                 break;
             case Constants.PDU_EXITNODEREP:
                 System.out.println("Received: PDU Exit Node Reply msg");
+                setMainTextViewWithString("Recieved ExitNodeRep");
                 ExitNodeRepPDU exitRep = new ExitNodeRepPDU();
                 exitRep.parseBytes(data);
                 Log.d(tag, exitRep.toReadableString());
@@ -152,6 +159,15 @@ public class AODVObserver extends Observable implements Observer {
             // TODO Auto-generated catch block
             e.printStackTrace();
         }
+    }
+
+    private void setMainTextViewWithString(String s){
+        String tag = "AODVObserver:sendMsgWithString";
+        Message m = new Message();
+        Bundle b = new Bundle();
+        b.putString("msg", s);
+        m.setData(b);
+        mActivity.handler.sendMessage(m);
     }
 
 }

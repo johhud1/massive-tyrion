@@ -97,7 +97,6 @@ public class ProxyThread extends Thread implements Observer {
          * // close out all resources if (rd != null) { rd.close(); } if (out !=
          * null) { out.close(); } if (in != null) { in.close(); }
          */
-
     }
 
 
