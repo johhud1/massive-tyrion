@@ -69,4 +69,12 @@ public class ExitNodeRepPDU implements MeshPduInterface {
        return this.srcId;
    }
 
+   public int getPacketID(){
+       return packetId;
+   }
+
+   public int getBroadcastID(){
+       return broadcastId;
+   }
+
 }

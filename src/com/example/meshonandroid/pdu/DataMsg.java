@@ -119,6 +119,9 @@ public class DataMsg implements MeshPduInterface {
         return type;
     }
 
+    public int getBroadcastID(){
+        return broadcastID;
+    }
 
     public int getPacketID() {
         return packetID;

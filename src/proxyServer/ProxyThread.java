@@ -27,14 +27,23 @@ public class ProxyThread extends Thread implements Observer {
     private DataOutputStream out;
     private String httpRequest;
     private AODVObserver mAodvObs;
+    private int reqNumber;
+    private int contactID;
 
-
-    public ProxyThread(Socket socket, Node node, AODVObserver aodvObs) {
+    public ProxyThread(Socket socket, Node node, AODVObserver aodvObs, int reqNumber) {
         super("ProxyThread");
         this.socket = socket;
         this.node = node;
         aodvObs.addObserver(this);
         mAodvObs = aodvObs;
+        this.reqNumber = reqNumber;
+    }
+
+
+    public ProxyThread(Socket accept, Node node2, AODVObserver aodvobs, int reqNumber2,
+                       int getContact) {
+        this(accept, node2, aodvobs, reqNumber2);
+        contactID = getContact;
     }
 
 
@@ -69,36 +78,32 @@ public class ProxyThread extends Thread implements Observer {
             }
             // end get request from client
 
+            //using contactManager, contactID should be set to valid hasData mesh node. send data straight off.
+
+            try {
+                DataMsg dreq =
+                    new DataReqMsg(node.getNodeAddress(), 1, reqNumber, Base64.encode(httpRequest
+                        .getBytes(Constants.encoding), 0));
+                node.sendData(1, contactID, dreq.toBytes());
+            } catch (UnsupportedEncodingException e) {
+                // TODO Auto-generated catch block
+                e.printStackTrace();
+            }
+
+            //BEGIN OLD BROADCAST METHOD
             // begin send request to mesh network
             // just gonna broadcast the request, anyone with a connection can
             // pick it up and respond
-            node.sendData(0, adhoc.aodv.Constants.BROADCAST_ADDRESS,
-                          new ExitNodeReqPDU(node.getNodeAddress(), 0, 0).toBytes());
+            //node.sendData(0, adhoc.aodv.Constants.BROADCAST_ADDRESS,
+            //              new ExitNodeReqPDU(node.getNodeAddress(), 0, reqNumber).toBytes());
             // send client data in update (recieved notifications from
             // AODVObserver)
-
             // end send request to mesh network
 
-            // /////////////////////////////////
-            // begin send response to client
-            /*
-             * byte by[] = new byte[BUFFER_SIZE]; int index = is.read(by, 0,
-             * BUFFER_SIZE); while (index != -1) { out.write(by, 0, index);
-             * index = is.read(by, 0, BUFFER_SIZE); } out.flush();
-             */
-            // end send response to client
-            // /////////////////////////////////
         } catch (Exception e) {
             // can redirect this to error log
             System.err.println("Encountered exception: " + e);
-            // encountered error - just send nothing back, so
-            // processing can continue
-            // out.writeBytes("err");
         }
-        /*
-         * // close out all resources if (rd != null) { rd.close(); } if (out !=
-         * null) { out.close(); } if (in != null) { in.close(); }
-         */
     }
 
 
@@ -110,55 +115,69 @@ public class ProxyThread extends Thread implements Observer {
         // split on two notifications here : (route request reply - in which
         // case send data to those addresses; and msg data in which case,
         // display returned data to client)
-        switch (msg.getPduType()) {
-        case Constants.PDU_DATAREPMSG:
-            Log.d(tag, "got pdu_datamsg");
-            DataMsg dmsg = (DataMsg) msg;
-            byte[] bytes = Base64.decode(dmsg.getDataBytes(), 0);
-            try {
-                String resp = new String(bytes, Constants.encoding);
-                Log.d(tag, "proxy got response: " + resp);
-            } catch (UnsupportedEncodingException e2) {
-                // TODO Auto-generated catch block
-                e2.printStackTrace();
-            }
-            try {
-                out.write(bytes, 0, bytes.length);
-                out.flush();
-            } catch (IOException e1) {
-                // TODO Auto-generated catch block
-                e1.printStackTrace();
-            }
-            if (socket != null) {
-                //got our response, close out the socket, and remove this as an aodv observer
+        if (checkIDNumber(msg.getBroadcastID())) {
+            Log.d(tag, "BroadcastID matchs");
+            switch (msg.getPduType()) {
+            case Constants.PDU_DATAREPMSG:
+                Log.d(tag, "got pdu_datamsg");
+                DataMsg dmsg = (DataMsg) msg;
+                byte[] bytes = Base64.decode(dmsg.getDataBytes(), 0);
                 try {
-                    mAodvObs.deleteObserver(this);
-                    socket.close();
-                } catch (IOException e) {
+                    String resp = new String(bytes, Constants.encoding);
+                    Log.d(tag, "proxy got response: " + resp);
+                } catch (UnsupportedEncodingException e2) {
+                    // TODO Auto-generated catch block
+                    e2.printStackTrace();
+                }
+                try {
+                    out.write(bytes, 0, bytes.length);
+                    out.flush();
+                } catch (IOException e1) {
+                    // TODO Auto-generated catch block
+                    e1.printStackTrace();
+                }
+                if (socket != null) {
+                    // done. close out the socket, and remove this as an aodv
+                    // observer
+                    try {
+                        mAodvObs.deleteObserver(this);
+                        socket.close();
+                    } catch (IOException e) {
+                        // TODO Auto-generated catch block
+                        e.printStackTrace();
+                    }
+                }
+                break;
+            case Constants.PDU_EXITNODEREP:
+/*
+                Log.d(tag, "got pdu_exitnoderep: sending off:" + httpRequest);
+                try {
+                    DataMsg dreq =
+                        new DataReqMsg(node.getNodeAddress(), 1, reqNumber, Base64.encode(httpRequest
+                            .getBytes(Constants.encoding), 0));
+                    Log.d(tag, "contactID:"+contactID+" vs. dmsg.getSourceID():"+msg.getSourceID());
+                    node.sendData(1, contactID, dreq.toBytes());
+                } catch (UnsupportedEncodingException e) {
                     // TODO Auto-generated catch block
                     e.printStackTrace();
-                }
+                }*/
+                break;
+            case Constants.PDU_EXITNODEREQ:
+                Log.d(tag, "got PDU_EXITNODEREQ");
+                // do nothing
+                break;
+            default:
+                Log.d(tag, "default switch");
             }
-            break;
-        case Constants.PDU_EXITNODEREP:
-            Log.d(tag, "got pdu_exitnoderep: sending off:" + httpRequest);
-            try {
-                DataMsg dreq = new DataReqMsg(node.getNodeAddress(), 1, 1, Base64.encode(httpRequest
-                                                                          .getBytes(Constants.encoding), 0));
-                node.sendData(1,
-                              msg.getSourceID(), dreq.toBytes());
-            } catch (UnsupportedEncodingException e) {
-                // TODO Auto-generated catch block
-                e.printStackTrace();
-            }
-            break;
-        case Constants.PDU_EXITNODEREQ:
-            Log.d(tag, "got PDU_EXITNODEREQ");
-            // do nothing
-            break;
-        default:
-            Log.d(tag, "default switch");
-
+        } else {
+            //broadcast ID doesn't match our own, packet must be for different request/proxythread
+            Log.d(tag, "BroadcastId doesn't match. Ours:"+reqNumber+ " found:"+msg.getBroadcastID());
         }
     }
+
+
+    private boolean checkIDNumber(int i) {
+        return (i == reqNumber);
+    }
+
 }

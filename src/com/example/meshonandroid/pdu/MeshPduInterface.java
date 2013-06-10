@@ -18,6 +18,9 @@ public interface MeshPduInterface {
 
     public int getSourceID();
 
+    public int getPacketID();
+
+    public int getBroadcastID();
     /*
     public int getSequenceNumber();
 

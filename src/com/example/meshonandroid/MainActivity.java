@@ -17,6 +17,7 @@ import java.net.SocketException;
 import java.net.URL;
 import java.net.URLConnection;
 import java.net.UnknownHostException;
+import java.util.Date;
 import java.util.Observable;
 import java.util.Observer;
 import java.util.Properties;
@@ -31,18 +32,21 @@ import com.example.meshonandroid.pdu.ExitNodeReqPDU;
 
 import adhoc.aodv.Node;
 import adhoc.aodv.exception.InvalidNodeAddressException;
+import android.net.Uri;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Message;
 import android.os.StrictMode;
 import android.annotation.SuppressLint;
 import android.app.Activity;
+import android.content.Intent;
 import android.support.v4.widget.SearchViewCompat.OnCloseListenerCompat;
 import android.util.Log;
 import android.view.Menu;
 import android.view.View;
 import android.view.View.OnClickListener;
 import android.webkit.WebView;
+import android.webkit.WebViewClient;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.TextView;
@@ -79,17 +83,32 @@ public class MainActivity extends Activity {
         Button get192136Button = (Button) findViewById(R.id.req_192_136);
 
         getUrlButton.setOnClickListener(new urlReqOnClickListener(urlField.getText().toString()));
-        get192136Button.setOnClickListener(new urlReqOnClickListener("http://192.168.1.136"));
+        get192136Button.setOnClickListener(new urlReqOnClickListener("http://192.168.1.132"));
         get1921Button.setOnClickListener(new urlReqOnClickListener("http://192.168.1.1"));
 
         outputTV = (TextView) findViewById(R.id.recvd_message_tv);
         mWV = (WebView) findViewById(R.id.wv);
         setProxy(mWV);
+        mWV.setWebViewClient(new WebViewClient(){
+            @Override
+            public boolean shouldOverrideUrlLoading(WebView view, String url) {
+                /*
+                String[] spliturl = url.split(".");
+                if(spliturl[spliturl.length].equals(".html")){
+                    return false;
+                } else {
+                    startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse(url)));
+                    return true;
+                }*/
+                return false;
+                //return super.shouldOverrideUrlLoading(view, url);
+            }
+        });
         handler = new Handler() {
             @SuppressWarnings("unchecked")
             @Override
             public void handleMessage(Message msg) {
-                outputTV.setText(outputTV.getText() + "\n" + msg.getData().getString("msg"));
+                setTextField(msg.getData().getString("msg"));
             }
         };
 
@@ -134,10 +153,20 @@ public class MainActivity extends Activity {
         wv.loadData(htmlString, "text/html", Constants.encoding);
     }
 
+    @Override
+    public void onDestroy() {
+        super.onDestroy();
+        if(myNode != null){
+            myNode.stopThread();
+        }
+    }
 
     public void setTextField(String text) {
         TextView outField = (TextView) findViewById(R.id.recvd_message_tv);
-        outField.setText(text);
+        Date now = new Date();
+        if(outField!=null){
+            outField.setText(outputTV.getText() + "\n" +now.toLocaleString()+ ": "+text);
+        }
     }
 
 

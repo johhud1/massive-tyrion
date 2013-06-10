@@ -48,16 +48,16 @@
             android:id="@+id/recvd_message_tv"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_below="@+id/req_192.136"
+            android:layout_below="@+id/wv"
             android:layout_marginTop="26dp"
-            android:text="No Messages so far" />
+            android:text="Messages:" />
 
         <WebView
-            android:id="@+id/wv"
+            android:id="@id/wv"
             android:layout_width="match_parent"
             android:layout_height="match_parent"
             android:layout_alignLeft="@+id/recvd_message_tv"
-            android:layout_below="@+id/recvd_message_tv" />
+            android:layout_below="@id/req_192.136" />
 
     </RelativeLayout>
 
