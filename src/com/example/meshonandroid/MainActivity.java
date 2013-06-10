@@ -4,6 +4,9 @@ import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.lang.reflect.Constructor;
+import java.lang.reflect.Field;
+import java.lang.reflect.Method;
 import java.net.BindException;
 import java.net.HttpURLConnection;
 import java.net.InetSocketAddress;
@@ -48,6 +51,9 @@ import android.widget.TextView;
 
 public class MainActivity extends Activity {
 
+    static String PROXY_IP = "localhost";
+    static int PROXY_PORT = 8080;
+
     int lastBroadcastId = 0;
     int lastDataRRId = 0;
     int myContactID;
@@ -55,15 +61,15 @@ public class MainActivity extends Activity {
     public Handler handler;
 
     private TextView outputTV;
-
+    private WebView mWV;
 
     @SuppressLint("NewApi")
     @Override
     protected void onCreate(Bundle savedInstanceState) {
-        //BAD - should get rid of, but makes for faster, dont' have to put all network activities in seperate threads
+        // BAD - should get rid of, but makes for faster, dont' have to put all
+        // network activities in seperate threads
         StrictMode.ThreadPolicy policy = new StrictMode.ThreadPolicy.Builder().permitAll().build();
         StrictMode.setThreadPolicy(policy);
-
 
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
@@ -76,7 +82,9 @@ public class MainActivity extends Activity {
         get192136Button.setOnClickListener(new urlReqOnClickListener("http://192.168.1.136"));
         get1921Button.setOnClickListener(new urlReqOnClickListener("http://192.168.1.1"));
 
-        outputTV= (TextView) findViewById(R.id.recvd_message_tv);
+        outputTV = (TextView) findViewById(R.id.recvd_message_tv);
+        mWV = (WebView) findViewById(R.id.wv);
+        setProxy(mWV);
         handler = new Handler() {
             @SuppressWarnings("unchecked")
             @Override
@@ -107,27 +115,25 @@ public class MainActivity extends Activity {
             e.printStackTrace();
         }
 
-
-/*
-        HttpURLConnection urlConn;
-        try {
-            URL url  = new URL("http://www.google.com");
-            Proxy proxy = new Proxy(Proxy.Type.HTTP, new InetSocketAddress("localhost", 8080));
-
-            InputStream response = url.openConnection(proxy).getInputStream();
-            System.out.println(response.read());
-
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-        */
+        /*
+         * HttpURLConnection urlConn; try { URL url = new
+         * URL("http://www.google.com"); Proxy proxy = new
+         * Proxy(Proxy.Type.HTTP, new InetSocketAddress("localhost", 8080));
+         *
+         * InputStream response = url.openConnection(proxy).getInputStream();
+         * System.out.println(response.read());
+         *
+         * } catch (IOException e) { e.printStackTrace(); }
+         */
 
     }
 
-    public void setWebView(String htmlString){
+
+    public void setWebView(String htmlString) {
         WebView wv = (WebView) findViewById(R.id.wv);
         wv.loadData(htmlString, "text/html", Constants.encoding);
     }
+
 
     public void setTextField(String text) {
         TextView outField = (TextView) findViewById(R.id.recvd_message_tv);
@@ -168,57 +174,158 @@ public class MainActivity extends Activity {
             return -1;
         }
     }
-    private class urlReqOnClickListener implements OnClickListener{
+
+    private class urlReqOnClickListener implements OnClickListener {
         private String mUrl;
 
-        public urlReqOnClickListener(String url){
+
+        public urlReqOnClickListener(String url) {
             super();
             mUrl = url;
         }
+
 
         @Override
         public void onClick(View v) {
             if (myNode != null) {
                 /*
-                ExitNodeReqPDU dr =
-                    new ExitNodeReqPDU(myContactID, getBroadcastID(), getDataRRID());
-                myNode.sendData(dr.getPacketID(), 255, dr.toBytes());
-                */
+                 * ExitNodeReqPDU dr = new ExitNodeReqPDU(myContactID,
+                 * getBroadcastID(), getDataRRID());
+                 * myNode.sendData(dr.getPacketID(), 255, dr.toBytes());
+                 */
+
+                mWV.loadUrl(mUrl);
+
+                /*
                 URLConnection urlConn;
                 try {
-                    URL url  = new URL(mUrl);
-                    Proxy proxy = new Proxy(Proxy.Type.HTTP, new InetSocketAddress("localhost", 8080));
+                    URL url = new URL(mUrl);
+                    Proxy proxy =
+                        new Proxy(Proxy.Type.HTTP, new InetSocketAddress("localhost", 8080));
 
                     InputStream response = url.openConnection(proxy).getInputStream();
                     byte[] responseBuf = new byte[512];
                     ByteArrayOutputStream in = new ByteArrayOutputStream();
-                    int offset=0;
-                    while(response.read(responseBuf, offset, 512)>0){
+                    int offset = 0;
+                    while (response.read(responseBuf, offset, 512) > 0) {
                         in.write(responseBuf);
                     }
-                    //setTextField("resp: "+ in.toString(Constants.encoding));
+
                     String htmlString = in.toString(Constants.encoding);
                     setWebView(htmlString);
                     response.close();
 
                 } catch (IOException e) {
                     e.printStackTrace();
-                }
+                }*/
             }
         }
 
     }
 
-/*
-    @Override
-    public void update(Observable arg0, Object arg1) {
-        String tag = "MainActivity:update";
-        Log.d(tag, "got update from Observable: " + arg1.toString());
-        Message m = new Message();
-        Bundle b = new Bundle();
-        b.putString("msg", arg1.toString());
-        m.setData(b);
-        handler.sendMessage(m);
 
-    }*/
+    public void setProxy(WebView wView) {
+        try {
+            Class jwcjb = Class.forName("android.webkit.JWebCoreJavaBridge");
+            Class params[] = new Class[1];
+            params[0] = Class.forName("android.net.ProxyProperties");
+            Method updateProxyInstance = jwcjb.getDeclaredMethod("updateProxy", params);
+
+            Class wv = Class.forName("android.webkit.WebView");
+            Field mWebViewCoreField = wv.getDeclaredField("mWebViewCore");
+            Object mWebViewCoreFieldIntance = getFieldValueSafely(mWebViewCoreField, wView);
+
+            Class wvc = Class.forName("android.webkit.WebViewCore");
+            Field mBrowserFrameField = wvc.getDeclaredField("mBrowserFrame");
+            Object mBrowserFrame =
+                getFieldValueSafely(mBrowserFrameField, mWebViewCoreFieldIntance);
+
+            Class bf = Class.forName("android.webkit.BrowserFrame");
+            Field sJavaBridgeField = bf.getDeclaredField("sJavaBridge");
+            Object sJavaBridge = getFieldValueSafely(sJavaBridgeField, mBrowserFrame);
+
+            Class ppclass = Class.forName("android.net.ProxyProperties");
+            Class pparams[] = new Class[3];
+            pparams[0] = String.class;
+            pparams[1] = int.class;
+            pparams[2] = String.class;
+            Constructor ppcont = ppclass.getConstructor(pparams);
+
+            updateProxyInstance.invoke(sJavaBridge, ppcont.newInstance(PROXY_IP, PROXY_PORT, null));
+        } catch (Exception ex) {}
+    }
+
+
+    /**
+     * Set Proxy for Android 4.1 and above.
+     */
+    public boolean setProxyICSPlus(WebView webview, String host, int port,
+                                          String exclusionList) {
+
+        Log.d("", "Setting proxy with >= 4.1 API.");
+
+        try {
+
+            Class wvcClass = Class.forName("android.webkit.WebViewClassic");
+            Class wvParams[] = new Class[1];
+            wvParams[0] = Class.forName("android.webkit.WebView");
+            Method fromWebView = wvcClass.getDeclaredMethod("fromWebView", wvParams);
+            Object webViewClassic = fromWebView.invoke(null, webview);
+
+            Class wv = Class.forName("android.webkit.WebViewClassic");
+            Field mWebViewCoreField = wv.getDeclaredField("mWebViewCore");
+            Object mWebViewCoreFieldIntance =
+                getFieldValueSafely(mWebViewCoreField, webViewClassic);
+
+            Class wvc = Class.forName("android.webkit.WebViewCore");
+            Field mBrowserFrameField = wvc.getDeclaredField("mBrowserFrame");
+            Object mBrowserFrame =
+                getFieldValueSafely(mBrowserFrameField, mWebViewCoreFieldIntance);
+
+            Class bf = Class.forName("android.webkit.BrowserFrame");
+            Field sJavaBridgeField = bf.getDeclaredField("sJavaBridge");
+            Object sJavaBridge = getFieldValueSafely(sJavaBridgeField, mBrowserFrame);
+
+            Class ppclass = Class.forName("android.net.ProxyProperties");
+            Class pparams[] = new Class[3];
+            pparams[0] = String.class;
+            pparams[1] = int.class;
+            pparams[2] = String.class;
+            Constructor ppcont = ppclass.getConstructor(pparams);
+
+            Class jwcjb = Class.forName("android.webkit.JWebCoreJavaBridge");
+            Class params[] = new Class[1];
+            params[0] = Class.forName("android.net.ProxyProperties");
+            Method updateProxyInstance = jwcjb.getDeclaredMethod("updateProxy", params);
+
+            updateProxyInstance.invoke(sJavaBridge, ppcont.newInstance(host, port, exclusionList));
+
+        } catch (Exception ex) {
+            Log.e("", "Setting proxy with >= 4.1 API failed with error: " + ex.getMessage());
+            return false;
+        }
+
+        Log.d("", "Setting proxy with >= 4.1 API successful!");
+        return true;
+    }
+
+
+    private Object
+        getFieldValueSafely(Field field, Object classInstance) throws IllegalArgumentException,
+                                                              IllegalAccessException {
+        boolean oldAccessibleValue = field.isAccessible();
+        field.setAccessible(true);
+        Object result = field.get(classInstance);
+        field.setAccessible(oldAccessibleValue);
+        return result;
+    }
+    /*
+     * @Override public void update(Observable arg0, Object arg1) { String tag =
+     * "MainActivity:update"; Log.d(tag, "got update from Observable: " +
+     * arg1.toString()); Message m = new Message(); Bundle b = new Bundle();
+     * b.putString("msg", arg1.toString()); m.setData(b);
+     * handler.sendMessage(m);
+     *
+     * }
+     */
 }

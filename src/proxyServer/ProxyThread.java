@@ -26,6 +26,7 @@ public class ProxyThread extends Thread implements Observer {
     //
     private DataOutputStream out;
     private String httpRequest;
+    private AODVObserver mAodvObs;
 
 
     public ProxyThread(Socket socket, Node node, AODVObserver aodvObs) {
@@ -33,6 +34,7 @@ public class ProxyThread extends Thread implements Observer {
         this.socket = socket;
         this.node = node;
         aodvObs.addObserver(this);
+        mAodvObs = aodvObs;
     }
 
 
@@ -128,7 +130,9 @@ public class ProxyThread extends Thread implements Observer {
                 e1.printStackTrace();
             }
             if (socket != null) {
+                //got our response, close out the socket, and remove this as an aodv observer
                 try {
+                    mAodvObs.deleteObserver(this);
                     socket.close();
                 } catch (IOException e) {
                     // TODO Auto-generated catch block

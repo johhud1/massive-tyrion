@@ -7,7 +7,7 @@ import java.util.Observer;
 import com.example.meshonandroid.Constants;
 import com.example.meshonandroid.DataManager;
 import com.example.meshonandroid.MainActivity;
-import com.example.meshonandroid.TrafficManager;
+import com.example.meshonandroid.OutLinkManager;
 
 import adhoc.aodv.Node;
 import adhoc.aodv.ObserverConst;
@@ -21,13 +21,13 @@ import android.util.Log;
 
 
 public class AODVObserver extends Observable implements Observer {
-    private TrafficManager mTrafficMan;
+    private OutLinkManager mTrafficMan;
     private DataManager mDataMan;
     private MainActivity mActivity;
 
     public AODVObserver(Node node, int mId, MainActivity mainActivity) {
         node.addObserver(this);
-        mTrafficMan =  new TrafficManager(true, node, mId);
+        mTrafficMan =  new OutLinkManager(true, node, mId);
         mActivity = mainActivity;
         mDataMan = new DataManager(node);
         this.addObserver(mTrafficMan);

@@ -45,7 +45,7 @@ import android.util.SparseIntArray;
 
 
 
-public class TrafficManager implements Observer {
+public class OutLinkManager implements Observer {
 
     private boolean mHaveData = true;
     private Node mNode;
@@ -70,7 +70,7 @@ public class TrafficManager implements Observer {
      *
      * @param
      */
-    public TrafficManager(boolean haveData, Node node, int myID) {
+    public OutLinkManager(boolean haveData, Node node, int myID) {
         mContactId = myID;
         mNode = node;
         mHaveData = haveData;
@@ -102,9 +102,10 @@ public class TrafficManager implements Observer {
         case Constants.PDU_DATAREQMSG:
             DataMsg dmsg = (DataMsg) msg;
             try {
+                //got a data request, forward the request to outlink
                 //Log.d(tag, "got data request, sending response: " + fakeResp);
                 String httpRequest = new String(Base64.decode(dmsg.getDataBytes(), 0), Constants.encoding);
-                Log.d(tag, "got data msg. Data (request?): "+httpRequest);
+                Log.d(tag, "got PDU_DATAREQMSG: "+httpRequest);
                 HttpRequest rq = ApacheRequestFactory.create(httpRequest);
                 ByteArrayOutputStream out = new ByteArrayOutputStream();
                 DefaultHttpClient dhc = new DefaultHttpClient();
@@ -118,6 +119,7 @@ public class TrafficManager implements Observer {
                     int bufLength = (int) contLength;
                     int offset = 0;
                     if(contLength > 0){
+                        //write the response from responseBuf to out
                         responseBuf = new byte[bufLength];
                         respStream.read(responseBuf);
                         out.write(responseBuf);
@@ -151,6 +153,8 @@ public class TrafficManager implements Observer {
                     // TODO Auto-generated catch block
                     e.printStackTrace();
                 }*/
+
+                //base64 encode out (holding response data) and send it back to originator
                 int pid = dmsg.getPacketID() + 1;
                 DataMsg respData =
                     new DataRepMsg(mContactId, pid, 0, Base64.encode(out.toByteArray(), 0));
