@@ -45,9 +45,10 @@ public class ProxyListener extends Thread{
         }
         while (listening) {
             try {
+                Socket s = serverSocket.accept();
                 int c = contactManager.GetContact(getReqNumber());
                 Log.d(tag, "contactManager.GetContact() returned contact:"+c);
-                new ProxyThread(serverSocket.accept(), node, aodvobs, getReqNumber(), c).start();
+                new ProxyThread(s, node, aodvobs, getReqNumber(), c).start();
                 reqNumber++;
             } catch (IOException e) {
                 // TODO Auto-generated catch block

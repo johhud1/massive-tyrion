@@ -1,46 +1,23 @@
 package com.example.meshonandroid;
 
-import java.io.ByteArrayOutputStream;
-import java.io.DataOutputStream;
-import java.io.IOException;
-import java.io.InputStream;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.net.BindException;
-import java.net.HttpURLConnection;
-import java.net.InetSocketAddress;
-import java.net.MalformedURLException;
 import java.net.NetworkInterface;
-import java.net.Proxy;
 import java.net.SocketException;
-import java.net.URL;
-import java.net.URLConnection;
 import java.net.UnknownHostException;
 import java.util.Date;
-import java.util.Observable;
-import java.util.Observer;
-import java.util.Properties;
-
-import org.apache.http.HttpHost;
-import org.apache.http.client.HttpClient;
 
 import proxyServer.ProxyListener;
-
-import com.example.meshonandroid.pdu.AODVObserver;
-import com.example.meshonandroid.pdu.ExitNodeReqPDU;
-
 import adhoc.aodv.Node;
 import adhoc.aodv.exception.InvalidNodeAddressException;
-import android.net.Uri;
+import android.annotation.SuppressLint;
+import android.app.Activity;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Message;
 import android.os.StrictMode;
-import android.annotation.SuppressLint;
-import android.app.Activity;
-import android.content.Intent;
-import android.support.v4.widget.SearchViewCompat.OnCloseListenerCompat;
 import android.util.Log;
 import android.view.Menu;
 import android.view.View;
@@ -50,6 +27,8 @@ import android.webkit.WebViewClient;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.TextView;
+
+import com.example.meshonandroid.pdu.AODVObserver;
 
 
 
