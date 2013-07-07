@@ -7,13 +7,18 @@ import java.net.BindException;
 import java.net.NetworkInterface;
 import java.net.SocketException;
 import java.net.UnknownHostException;
+import java.util.ArrayList;
 import java.util.Date;
+import java.util.List;
 
 import proxyServer.ProxyListener;
 import adhoc.aodv.Node;
 import adhoc.aodv.exception.InvalidNodeAddressException;
 import android.annotation.SuppressLint;
 import android.app.Activity;
+import android.content.Context;
+import android.net.wifi.WifiConfiguration;
+import android.net.wifi.WifiManager;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Message;
@@ -34,7 +39,7 @@ import com.example.meshonandroid.pdu.AODVObserver;
 
 public class MainActivity extends Activity {
 
-    static String PROXY_IP = "localhost";
+    static String PROXY_IP = "127.0.0.1";
     static int PROXY_PORT = 8080;
 
     int lastBroadcastId = 0;
@@ -71,18 +76,16 @@ public class MainActivity extends Activity {
         mWV.setWebViewClient(new WebViewClient(){
             @Override
             public boolean shouldOverrideUrlLoading(WebView view, String url) {
-                /*
-                String[] spliturl = url.split(".");
-                if(spliturl[spliturl.length].equals(".html")){
-                    return false;
-                } else {
-                    startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse(url)));
-                    return true;
-                }*/
                 return false;
-                //return super.shouldOverrideUrlLoading(view, url);
             }
         });
+        /*
+         * WifiManager mngr = (WifiManager) getSystemService(Context.WIFI_SERVICE);
+         * List<WifiConfiguration> wconfigList = mngr.getConfiguredNetworks();
+         * WifiConfiguration config = wconfigList.get(0);
+         * config.
+         */
+
         handler = new Handler() {
             @SuppressWarnings("unchecked")
             @Override
@@ -126,11 +129,12 @@ public class MainActivity extends Activity {
 
     }
 
-
+/*
     public void setWebView(String htmlString) {
         WebView wv = (WebView) findViewById(R.id.wv);
         wv.loadData(htmlString, "text/html", Constants.encoding);
     }
+    */
 
     @Override
     public void onDestroy() {

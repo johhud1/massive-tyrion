@@ -52,7 +52,7 @@ public class ContactManager implements Observer {
                            new ExitNodeReqPDU(mNode.getNodeAddress(), 0, reqNumber).toBytes());
         }
         try {
-            Thread.sleep(700);
+            Thread.sleep(Constants.EXITNODEREP_WAITTIME);
         } catch (InterruptedException e) {
             // TODO Auto-generated catch block
             e.printStackTrace();

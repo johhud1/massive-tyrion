@@ -11,12 +11,14 @@ import java.net.URLConnection;
 import java.util.Observable;
 import java.util.Observer;
 
+import org.apache.http.Header;
 import org.apache.http.HttpClientConnection;
 import org.apache.http.HttpException;
 import org.apache.http.HttpHost;
 import org.apache.http.HttpRequest;
 import org.apache.http.HttpRequestFactory;
 import org.apache.http.HttpResponse;
+import org.apache.http.StatusLine;
 import org.apache.http.client.ClientProtocolException;
 import org.apache.http.client.HttpClient;
 import org.apache.http.client.ResponseHandler;
@@ -53,23 +55,18 @@ public class OutLinkManager implements Observer {
     private Node mNode;
     private int mContactId;
     private SparseIntArray mPortToContactID = new SparseIntArray();
-    private String fakeResp = "HTTP/1.1 200 OK\n" + "Date: Mon, 23 May 2005 22:38:34 GMT\n"
-                              + "Server: Apache/1.3.3.7 (Unix) (Red-Hat/Linux)\n"
-                              + "Last-Modified: Wed, 08 Jan 2003 23:11:55 GMT\n"
-                              + "Etag: \"3f80f-1b6-3e1cb03b\"\n"
-                              + "Content-Type: text/html; charset=UTF-8\n" + "Content-Length: 21\n"
-                              + "Connection: close\n" + "request recieved\r\n\r\n";
+
     private static int BUFSIZE = 512;
     private byte[] responseBuf = new byte[BUFSIZE];
 
 
     /**
      * Constructor for creating a traffic manager.
-     * 
+     *
      * The traffic manager is responsible for responding to ExitNodeReqPDU's and
      * for managing the mapping from local ports to Mesh network ID's (in order
      * to forward traffic appropriately (think NAT))
-     * 
+     *
      * @param
      */
     public OutLinkManager(boolean haveData, Node node, int myID) {
@@ -119,9 +116,17 @@ public class OutLinkManager implements Observer {
                     HttpResponse myresp = dhc.execute(targetHost, rq);
                     BufferedInputStream respStream =
                         new BufferedInputStream(myresp.getEntity().getContent());
+                    StatusLine respSL = myresp.getStatusLine();
+                    out.write((respSL.getProtocolVersion().toString()+" "+respSL.getStatusCode()+" "+respSL.getReasonPhrase()+"\n").getBytes(Constants.encoding));
+                    Header[] headers = myresp.getAllHeaders();
+                    for(Header h : headers){
+                        out.write((h.getName()+": "+h.getValue()+"\n").getBytes(Constants.encoding));
+                    }
+                    out.write(("\r\n").getBytes(Constants.encoding));
                     long contLength = myresp.getEntity().getContentLength();
                     Log.d(tag, "response Entity length: " + contLength);
-                    int bufLength = (int) contLength;
+                    Header hContLength = myresp.getHeaders("Content-length")[0];
+                    int bufLength = new Integer(hContLength.getValue());
                     int redd = 0;
                     int offset = 0;
                     if (contLength > 0) {

@@ -4,6 +4,17 @@ import java.net.*;
 import java.io.*;
 import java.util.*;
 
+import org.apache.http.HttpResponse;
+import org.apache.http.HttpResponseFactory;
+import org.apache.http.ProtocolVersion;
+import org.apache.http.impl.DefaultHttpResponseFactory;
+import org.apache.http.impl.io.HttpResponseWriter;
+import org.apache.http.io.HttpMessageWriter;
+import org.apache.http.message.BasicHttpResponse;
+import org.apache.http.message.BasicStatusLine;
+import org.apache.http.protocol.BasicHttpContext;
+import org.apache.http.protocol.DefaultedHttpContext;
+
 import com.example.meshonandroid.Constants;
 import com.example.meshonandroid.pdu.AODVObserver;
 import com.example.meshonandroid.pdu.DataMsg;
@@ -130,6 +141,7 @@ public class ProxyThread extends Thread implements Observer {
                     e2.printStackTrace();
                 }
                 try {
+                    //out.write(Constants.fakeResp.getBytes(Constants.encoding));
                     out.write(bytes, 0, bytes.length);
                     out.flush();
                 } catch (IOException e1) {
