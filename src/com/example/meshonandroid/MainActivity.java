@@ -103,16 +103,12 @@ public class MainActivity extends Activity {
             ProxyListener pl = new ProxyListener(8080, myNode, obs);
             pl.start();
         } catch (BindException e) {
-            // TODO Auto-generated catch block
             e.printStackTrace();
         } catch (InvalidNodeAddressException e) {
-            // TODO Auto-generated catch block
             e.printStackTrace();
         } catch (SocketException e) {
-            // TODO Auto-generated catch block
             e.printStackTrace();
         } catch (UnknownHostException e) {
-            // TODO Auto-generated catch block
             e.printStackTrace();
         }
 
@@ -181,7 +177,6 @@ public class MainActivity extends Activity {
             Log.d("getPhoneType", "myContactId is fourth ip segment:" + myid);
             return myid;
         } catch (SocketException e) {
-            // TODO Auto-generated catch block
             e.printStackTrace();
             return -1;
         }

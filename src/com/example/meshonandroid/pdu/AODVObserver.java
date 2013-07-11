@@ -35,6 +35,7 @@ public class AODVObserver extends Observable implements Observer {
 
     @Override
     public void update(Observable o, Object arg) {
+        String tag = "AODVObserver:update";
         MessageToObserver msg = (MessageToObserver)arg;
         int userPacketID, destination, type = msg.getMessageType();
         switch (type) {
@@ -52,6 +53,7 @@ public class AODVObserver extends Observable implements Observer {
             break;
         case ObserverConst.DATA_SIZE_EXCEEDES_MAX:
             userPacketID = (Integer)msg.getContainedData();
+            Log.e(tag, "DATA_SIZE_EXCEEDS_MAX");
             //FIXME slet fra timer
             break;
         case ObserverConst.ROUTE_INVALID:
@@ -155,7 +157,6 @@ public class AODVObserver extends Observable implements Observer {
             //discard the message
             // Message is in the domain of invalid messages
         } catch (UnsupportedEncodingException e) {
-            // TODO Auto-generated catch block
             e.printStackTrace();
         }
     }

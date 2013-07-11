@@ -20,30 +20,24 @@ import android.util.Log;
 public class ContactManager implements Observer {
     Node mNode;
     int myContactID;
-    // int reqNumber;
     ArrayList<Integer> contactList = new ArrayList<Integer>();
     Date updatedLast = new Date(0);
     int lastUsedContact;
 
 
-    // ArrayList<AbstractMap.SimpleEntry<Integer, Date>> contactList = new
-    // ArrayList<AbstractMap.SimpleEntry<Integer, Date>>();
     public ContactManager(Node myNode) {
-        // TODO Auto-generated constructor stub\
         lastUsedContact = 0;
         mNode = myNode;
         this.myContactID = myNode.getNodeAddress();
-        // reqNumber = rNumber;
     }
 
 
     public int GetContact(int reqNumber) throws NoContactsAvailableException {
 
-        //Date now = new Date();
-        Calendar then = Calendar.getInstance();
-        then.roll(Calendar.SECOND, -5);
+        Calendar fiveSecsAgo = Calendar.getInstance();
+        fiveSecsAgo.roll(Calendar.SECOND, -5);
         // if the contacts are older than 5 seconds, get new ones.
-        if (updatedLast.before(then.getTime())) {
+        if (updatedLast.before(fiveSecsAgo.getTime())) {
             mNode.sendData(0, adhoc.aodv.Constants.BROADCAST_ADDRESS,
                            new ExitNodeReqPDU(mNode.getNodeAddress(), 0, reqNumber).toBytes());
         } else if (contactList.size() == 0) { // if we dont have any contacts,
@@ -54,9 +48,8 @@ public class ContactManager implements Observer {
         try {
             Thread.sleep(Constants.EXITNODEREP_WAITTIME);
         } catch (InterruptedException e) {
-            // TODO Auto-generated catch block
             e.printStackTrace();
-        }
+        }//TODO: even if the exitNodeReq we just broadcast doesn't return anything, we still return these old contacts. Is that desired behavior?
         updatedLast = new Date();
         if (contactList.size() != 0) {
             if (lastUsedContact == contactList.size()) {

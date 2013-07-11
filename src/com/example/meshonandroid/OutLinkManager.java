@@ -8,6 +8,7 @@ import java.io.UnsupportedEncodingException;
 import java.net.Socket;
 import java.net.URL;
 import java.net.URLConnection;
+import java.util.Arrays;
 import java.util.Observable;
 import java.util.Observer;
 
@@ -43,13 +44,18 @@ import com.example.meshonandroid.pdu.MeshPduInterface;
 
 import adhoc.aodv.Node;
 import adhoc.aodv.pdu.AodvPDU;
+import android.annotation.TargetApi;
+import android.os.Build;
 import android.util.Base64;
 import android.util.Log;
 import android.util.SparseIntArray;
 
 
 
+@TargetApi(Build.VERSION_CODES.GINGERBREAD)
 public class OutLinkManager implements Observer {
+
+    private static int MAX_PAYLOAD_SIZE = adhoc.aodv.Constants.MAX_PACKAGE_SIZE-(4*1000); //8 ints times 4 bytes per int = total reserved bytes;
 
     private boolean mHaveData = true;
     private Node mNode;
@@ -57,7 +63,7 @@ public class OutLinkManager implements Observer {
     private SparseIntArray mPortToContactID = new SparseIntArray();
 
     private static int BUFSIZE = 512;
-    private byte[] responseBuf = new byte[BUFSIZE];
+    private byte[] responseBuf;
 
 
     /**
@@ -94,7 +100,7 @@ public class OutLinkManager implements Observer {
 
     @Override
     public void update(Observable arg0, Object m) {
-        String tag = "TrafficManager:update";
+        String tag = "OutLinkManager:update";
         MeshPduInterface msg = (MeshPduInterface) m;
         Log.d(tag, "got update. msg: " + m.toString());
         switch (msg.getPduType()) {
@@ -125,8 +131,12 @@ public class OutLinkManager implements Observer {
                     out.write(("\r\n").getBytes(Constants.encoding));
                     long contLength = myresp.getEntity().getContentLength();
                     Log.d(tag, "response Entity length: " + contLength);
-                    Header hContLength = myresp.getHeaders("Content-length")[0];
-                    int bufLength = new Integer(hContLength.getValue());
+                    Header[] hs = myresp.getHeaders("Content-length");
+                    int bufLength = 0;
+                    if(hs.length>0){
+                        Header hContLength = hs[0];//there may be a mismatch between contLength and buflength, could present a problem. idk.
+                        bufLength = new Integer(hContLength.getValue());
+                    }
                     int redd = 0;
                     int offset = 0;
                     if (contLength > 0) {
@@ -137,6 +147,7 @@ public class OutLinkManager implements Observer {
                             // offset += redd;
                         }
                     } else {
+                        responseBuf = new byte[BUFSIZE];
                         while ((redd = respStream.read(responseBuf, 0, BUFSIZE)) > 0) {
                             out.write(responseBuf, 0, redd);
                         }
@@ -145,33 +156,35 @@ public class OutLinkManager implements Observer {
                     // respStream.read(responseBuf);
                     // Log.d(tag, new String(responseBuf, Constants.encoding));
                 } catch (ClientProtocolException e2) {
-                    // TODO Auto-generated catch block
                     e2.printStackTrace();
                 } catch (IOException e2) {
-                    // TODO Auto-generated catch block
                     e2.printStackTrace();
                 }
-                /*
-                 * DefaultHttpClientConnection hcc = new
-                 * DefaultHttpClientConnection(); try { hcc.bind(new
-                 * Socket(rq.getRequestLine().getUri(), 80), rq.getParams());
-                 * HttpContext hc = new BasicHttpContext(); HttpRequestExecutor
-                 * hre = new HttpRequestExecutor(); HttpResponse resp; resp =
-                 * hre.execute(rq, hcc, hc); } catch (IOException e1) { // TODO
-                 * Auto-generated catch block e1.printStackTrace(); } catch
-                 * (HttpException e) { // TODO Auto-generated catch block
-                 * e.printStackTrace(); }
-                 */
 
                 // base64 encode out (holding response data) and send it back to
                 // originator
-                int pid = dmsg.getPacketID() + 1;
-                if (out.size() > adhoc.aodv.Constants.MAX_PACKAGE_SIZE) {
-                    Log.e("OutLink Manager", "user data to large to send over aodv");
+                int pid = dmsg.getPacketID();
+                byte[] outBArray = Base64.encode(out.toByteArray(), 0);
+                if (outBArray.length > MAX_PAYLOAD_SIZE) {
+                    int offset = 0;
+                    int packs = (outBArray.length/MAX_PAYLOAD_SIZE)+1;
+                    Log.d(tag, "user data to large ("+outBArray.length+") to send over aodv in 1 msg. splitting into "+packs+" msgs");
+                    for(int i=0; i<packs; i++){
+                        byte[] temp = new byte[Math.min(MAX_PAYLOAD_SIZE, outBArray.length - offset)];
+                        try {
+                            temp = Arrays.copyOfRange(outBArray, offset, offset+temp.length);
+                            DataMsg respData = new DataRepMsg(mContactId, pid, msg.getBroadcastID(), temp, packs);
+                            byte[] msgBytes = respData.toBytes();
+                            mNode.sendData(pid, dmsg.getSourceID(), msgBytes);
+                            pid++;
+                            offset += MAX_PAYLOAD_SIZE;
+                        } catch (IOException e) {
+                            e.printStackTrace();
+                        }
+                    }
                 } else {
                     DataMsg respData =
-                        new DataRepMsg(mContactId, pid, msg.getBroadcastID(), Base64.encode(out
-                            .toByteArray(), 0));
+                        new DataRepMsg(mContactId, pid, msg.getBroadcastID(), outBArray);
                     mNode.sendData(pid, dmsg.getSourceID(), respData.toBytes());
                 }
             } catch (UnsupportedEncodingException e) {

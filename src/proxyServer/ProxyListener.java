@@ -49,18 +49,14 @@ public class ProxyListener extends Thread{
                 int c = contactManager.GetContact(getReqNumber());
                 Log.d(tag, "contactManager.GetContact() returned contact:"+c);
                 new ProxyThread(s, node, aodvobs, getReqNumber(), c).start();
-                reqNumber++;
             } catch (IOException e) {
-                // TODO Auto-generated catch block
                 e.printStackTrace();
                 try {
                     serverSocket.close();
                 } catch (IOException e1) {
-                    // TODO Auto-generated catch block
                     e1.printStackTrace();
                 }
             } catch (NoContactsAvailableException e) {
-                // TODO Auto-generated catch block
                 e.printStackTrace();
             }
         }

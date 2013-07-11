@@ -20,10 +20,10 @@ public class DataReqMsg extends DataMsg {
     public void parseBytes(byte[] rawPdu) throws BadPduFormatException {
         String tag = "DataReqMsg:parseBytes";
         String[] s = new String(rawPdu).split(";", 7);
-        if (s.length != 5) { throw new BadPduFormatException(
+        if (s.length != 6) { throw new BadPduFormatException(
                                                              "DATAREQMSG: could not split "
                                                                  + "the expected # of arguments from rawPdu. "
-                                                                 + "Expecteded 5 args but were given "
+                                                                 + "Expecteded 6 args but were given "
                                                                  + s.length); }
         try {
             type = Byte.parseByte(s[0]);
@@ -36,13 +36,13 @@ public class DataReqMsg extends DataMsg {
             srcID = Integer.parseInt(s[1]);
             broadcastID = Integer.parseInt(s[2]);
             packetID = Integer.parseInt(s[3]);
-            data = s[4].getBytes(Constants.encoding);
+            numRespPackets = Integer.parseInt(s[4]);
+            data = s[5].getBytes(Constants.encoding);
             //Log.d(tag, "parsed bytes to DataMsg: "+this.toReadableString());
         } catch (NumberFormatException e) {
             throw new BadPduFormatException(
                                             "DATAREQ: falied in parsing arguments to the desired types");
         } catch (UnsupportedEncodingException e) {
-            // TODO Auto-generated catch block
             e.printStackTrace();
         }
     }

@@ -112,7 +112,6 @@ public class ExitNodeReqPDU implements MeshPduInterface {
 
     @Override
     public int getSourceID() {
-        // TODO Auto-generated method stub
         return this.srcID;
     }
 

@@ -14,6 +14,7 @@ public class DataMsg implements MeshPduInterface {
     protected int broadcastID;
     protected int packetID;
     protected byte[] data;
+    protected int numRespPackets;
 
     public DataMsg(){};
     /**
@@ -26,13 +27,21 @@ public class DataMsg implements MeshPduInterface {
      * @param broadcastId
      *            along with the source address this number uniquely identifies
      *            this route request PDU
+     * @param lastFrag
+     *          boolean field indicating whether there are more packets for this DataMsg
+     *
      */
-    public DataMsg(int srcId, int packetID, int broadcastId, byte type, byte[] data) {
+    public DataMsg(int srcId, int packetID, int broadcastId, byte type, byte[] data, int numRespPackets) {
         this.srcID = srcId;
         this.packetID = packetID;
         this.type = type;
         this.broadcastID = broadcastId;
         this.data = data;
+        this.numRespPackets = numRespPackets;
+    }
+
+    public DataMsg(int srcId, int packetID, int broadcastId, byte type, byte[] data){
+        this(srcId, packetID, broadcastId, type, data, 1);
     }
 
 
@@ -51,16 +60,15 @@ public class DataMsg implements MeshPduInterface {
 
     public String toReadableString() throws UnsupportedEncodingException {
         return "type:" + type + "; srcID:" + srcID + "; broadcastID:" + broadcastID + "; packetID:"
-               + packetID + "; data:"+new String(data, Constants.encoding);
+               + packetID;// + "; data:"+new String(data, Constants.encoding);
     }
 
 
     @Override
     public String toString() {
         try {
-            return type + ";" + srcID + ";" + broadcastID + ";" + packetID + ";" + new String(data, Constants.encoding);
+            return type + ";" + srcID + ";" + broadcastID + ";" + packetID + ";" + numRespPackets + ";" + new String(data, Constants.encoding);
         } catch (UnsupportedEncodingException e) {
-            // TODO Auto-generated catch block
             e.printStackTrace();
             return "error encoding string";
         }
@@ -79,10 +87,10 @@ public class DataMsg implements MeshPduInterface {
     public void parseBytes(byte[] rawPdu) throws BadPduFormatException {
         String tag = "DataMsg:parseBytes";
         String[] s = new String(rawPdu).split(";", 7);
-        if (s.length != 5) { throw new BadPduFormatException(
+        if (s.length != 6) { throw new BadPduFormatException(
                                                              "RREQ_DATA: could not split "
                                                                  + "the expected # of arguments from rawPdu. "
-                                                                 + "Expecteded 5 args but were given "
+                                                                 + "Expecteded 6 args but were given "
                                                                  + s.length); }
         try {
             type = Byte.parseByte(s[0]);
@@ -95,13 +103,13 @@ public class DataMsg implements MeshPduInterface {
             srcID = Integer.parseInt(s[1]);
             broadcastID = Integer.parseInt(s[2]);
             packetID = Integer.parseInt(s[3]);
-            data = s[4].getBytes(Constants.encoding);
+            numRespPackets = Integer.parseInt(s[4]);
+            data = s[5].getBytes(Constants.encoding);
             //Log.d(tag, "parsed bytes to DataMsg: "+this.toReadableString());
         } catch (NumberFormatException e) {
             throw new BadPduFormatException(
                                             "RREQ: falied in parsing arguments to the desired types");
         } catch (UnsupportedEncodingException e) {
-            // TODO Auto-generated catch block
             e.printStackTrace();
         }
     }
@@ -134,5 +142,9 @@ public class DataMsg implements MeshPduInterface {
 
     public void setPacketID(int id) {
         packetID = id;
+    }
+
+    public int getNumRespPackets(){
+        return numRespPackets;
     }
 }
