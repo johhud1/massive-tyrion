@@ -40,17 +40,20 @@ public class ContactManager implements Observer {
         if (updatedLast.before(fiveSecsAgo.getTime())) {
             mNode.sendData(0, adhoc.aodv.Constants.BROADCAST_ADDRESS,
                            new ExitNodeReqPDU(mNode.getNodeAddress(), 0, reqNumber).toBytes());
+            updatedLast = new Date();
         } else if (contactList.size() == 0) { // if we dont have any contacts,
                                               // get some
             mNode.sendData(0, adhoc.aodv.Constants.BROADCAST_ADDRESS,
                            new ExitNodeReqPDU(mNode.getNodeAddress(), 0, reqNumber).toBytes());
+            updatedLast = new Date();
         }
         try {
             Thread.sleep(Constants.EXITNODEREP_WAITTIME);
         } catch (InterruptedException e) {
             e.printStackTrace();
-        }//TODO: even if the exitNodeReq we just broadcast doesn't return anything, we still return these old contacts. Is that desired behavior?
-        updatedLast = new Date();
+        }// TODO: even if the exitNodeReq we just broadcast doesn't return
+         // anything, we still return these old contacts. Is that desired
+         // behavior?
         if (contactList.size() != 0) {
             if (lastUsedContact == contactList.size()) {
                 lastUsedContact = 1;
@@ -83,7 +86,9 @@ public class ContactManager implements Observer {
         switch (msg.getPduType()) {
         case Constants.PDU_EXITNODEREP:
             Log.d(tag, "got ExitNodeRep");
-            contactList.add(msg.getSourceID());
+            if (msg.getSourceID() != 1 || msg.getSourceID() != 0) {
+                contactList.add(msg.getSourceID());
+            }
             break;
         default:
 

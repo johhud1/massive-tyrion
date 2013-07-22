@@ -4,5 +4,16 @@
     <string name="app_name">MeshOnAndroid</string>
     <string name="action_settings">Settings</string>
     <string name="hello_world">Hello world!</string>
+    <string name="startMeshButText">Start Mesh Service Proxy</string>
 
+    <!-- preference strings -->
+    <string name="running_switch_sum">Proxy Switch</string>
+    <string name="running_switch_title">Enable / Disable Proxy</string>
+    <string name="host_sum">Host address for this proxy</string>
+    <string name="host_title">Host</string>
+    <string name="port_title">Port</string>
+    <string name="port_sum">Port for this proxy</string>
+    <string name="isRunning_key">ir_key</string>
+    <string name="host_key">hk</string>
+    <string name="port_key">pk</string>
 </resources>

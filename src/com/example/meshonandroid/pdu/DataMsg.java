@@ -58,7 +58,7 @@ public class DataMsg implements MeshPduInterface {
      * public void incrementHopCount(){ hopCount++; }
      */
 
-    public String toReadableString() throws UnsupportedEncodingException {
+    public String toReadableString(){
         return "type:" + type + "; srcID:" + srcID + "; broadcastID:" + broadcastID + "; packetID:"
                + packetID;// + "; data:"+new String(data, Constants.encoding);
     }

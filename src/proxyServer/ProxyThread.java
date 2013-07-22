@@ -23,6 +23,8 @@ import com.example.meshonandroid.pdu.ExitNodeReqPDU;
 import com.example.meshonandroid.pdu.MeshPduInterface;
 
 import adhoc.aodv.Node;
+import android.os.Handler;
+import android.os.Message;
 import android.util.Base64;
 import android.util.Log;
 
@@ -43,22 +45,24 @@ public class ProxyThread extends Thread implements Observer {
     private int contactID;
     private int recievedPackets = 0;
     private int expectedRespPackets = 1;
+    private Handler msgHandler;
 
 
-    public ProxyThread(Socket socket, Node node, AODVObserver aodvObs, int reqNumber) {
+    public ProxyThread(Socket socket, Node node, AODVObserver aodvObs, int reqNumber, Handler msgHandler) {
         super("ProxyThread");
         this.socket = socket;
         this.node = node;
         aodvObs.addObserver(this);
         mAodvObs = aodvObs;
+        this.msgHandler = msgHandler;
         this.broadcastId = reqNumber;
         packetBuf = new byte[MAX_PACKETS][];
     }
 
 
     public ProxyThread(Socket accept, Node node2, AODVObserver aodvobs, int reqNumber2,
-                       int getContact) {
-        this(accept, node2, aodvobs, reqNumber2);
+                       int getContact, Handler h) {
+        this(accept, node2, aodvobs, reqNumber2, h);
         contactID = getContact;
     }
 
@@ -96,7 +100,6 @@ public class ProxyThread extends Thread implements Observer {
 
             // using contactManager, contactID should be set to valid hasData
             // mesh node. send data straight off.
-
             try {
                 DataMsg dreq =
                     new DataReqMsg(node.getNodeAddress(), 0, broadcastId, Base64.encode(httpRequest
@@ -110,17 +113,6 @@ public class ProxyThread extends Thread implements Observer {
                 e.printStackTrace();
             }
 
-            // BEGIN OLD BROADCAST METHOD
-            // begin send request to mesh network
-            // just gonna broadcast the request, anyone with a connection can
-            // pick it up and respond
-            // node.sendData(0, adhoc.aodv.Constants.BROADCAST_ADDRESS,
-            // new ExitNodeReqPDU(node.getNodeAddress(), 0,
-            // reqNumber).toBytes());
-            // send client data in update (recieved notifications from
-            // AODVObserver)
-            // end send request to mesh network
-
         } catch (Exception e) {
             // can redirect this to error log
             System.err.println("Encountered exception: " + e);
@@ -132,7 +124,12 @@ public class ProxyThread extends Thread implements Observer {
     public void update(Observable observable, Object data) {
         String tag = "ProxyThread:update";
         MeshPduInterface msg = (MeshPduInterface) data;
-        Log.d(tag, "got msg: " + msg.toString());
+        try {
+            Log.d(tag, "got msg: " + msg.toReadableString());
+        } catch (UnsupportedEncodingException e1) {
+            // TODO Auto-generated catch block
+            e1.printStackTrace();
+        }
         // split on two notifications here : (route request reply - in which
         // case send data to those addresses; and msg data in which case,
         // display returned data to client)
@@ -155,8 +152,9 @@ public class ProxyThread extends Thread implements Observer {
                         for (int i = 0; i < recievedPackets; i++) {
                             bOS.write(packetBuf[i]);
                         }
-
-                        out.write(Base64.decode(bOS.toByteArray(), 0));
+                        byte[] outArray = bOS.toByteArray();
+                        sendTrafficForwardedMsg(outArray.length);
+                        out.write(Base64.decode(outArray, 0));
                         out.flush();
                         if (socket != null) {
                             // done. close out the socket, and remove this as an
@@ -186,6 +184,15 @@ public class ProxyThread extends Thread implements Observer {
                   "BroadcastId doesn't match. Ours:" + broadcastId + " found:"
                       + msg.getBroadcastID());
         }
+    }
+
+  //traffic forwarded through the mesh on our behalf
+    private void sendTrafficForwardedMsg(int length) { 
+        Message m = new Message();
+        m.arg1 = Constants.TF_MSG_CODE;
+        m.arg2 = length;
+        msgHandler.sendMessage(m);
+
     }
 
 

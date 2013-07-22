@@ -6,7 +6,8 @@ import java.util.Observer;
 
 import com.example.meshonandroid.Constants;
 import com.example.meshonandroid.DataManager;
-import com.example.meshonandroid.MainActivity;
+import com.example.meshonandroid.HandlerActivity;
+import com.example.meshonandroid.MainPrefActivity;
 import com.example.meshonandroid.OutLinkManager;
 
 import adhoc.aodv.Node;
@@ -23,11 +24,11 @@ import android.util.Log;
 public class AODVObserver extends Observable implements Observer {
     private OutLinkManager mTrafficMan;
     private DataManager mDataMan;
-    private MainActivity mActivity;
+    private HandlerActivity mActivity;
 
-    public AODVObserver(Node node, int mId, MainActivity mainActivity) {
+    public AODVObserver(Node node, int mId, HandlerActivity mainActivity) {
         node.addObserver(this);
-        mTrafficMan =  new OutLinkManager(true, node, mId);
+        mTrafficMan =  new OutLinkManager(true, node, mId, mainActivity.getHandler());
         mActivity = mainActivity;
         mDataMan = new DataManager(node);
         this.addObserver(mTrafficMan);
@@ -117,13 +118,13 @@ public class AODVObserver extends Observable implements Observer {
                 exitRep.parseBytes(data);
                 Log.d(tag, exitRep.toReadableString());
                 notifyObservers(exitRep);
-
-                //notifyObservers("recieved PDU_EXITNODEREP: "+exitRep.toReadableString());
-                //mDataMan.sendDataMsg(senderID);
-
-                //ExitNodeRepPDU repMsg = new ExitNodeRepPDU();
-                //repMsg.parseBytes(data);
-                //Log.d(tag, repMsg.toReadableString());
+                break;
+            case Constants.PDU_IPDISCOVER:
+                System.out.println("Recieved: IPDiscover msg");
+                setMainTextViewWithString("Recieved IPDiscover msg");
+                IPDiscoverMsg ipMsg = new IPDiscoverMsg();
+                ipMsg.parseBytes(data);
+                notifyObservers(ipMsg);
                 break;
                 /*
             case Constants.PDU_CHAT_REQUEST:l
@@ -156,18 +157,17 @@ public class AODVObserver extends Observable implements Observer {
             e.printStackTrace();
             //discard the message
             // Message is in the domain of invalid messages
-        } catch (UnsupportedEncodingException e) {
-            e.printStackTrace();
         }
     }
 
     private void setMainTextViewWithString(String s){
         String tag = "AODVObserver:sendMsgWithString";
         Message m = new Message();
+        m.arg1 = Constants.LOG_MSG_CODE;
         Bundle b = new Bundle();
         b.putString("msg", s);
         m.setData(b);
-        mActivity.handler.sendMessage(m);
+        mActivity.getHandler().sendMessage(m);
     }
 
 }

@@ -21,6 +21,10 @@ public interface MeshPduInterface {
     public int getPacketID();
 
     public int getBroadcastID();
+
+    public String toString();
+
+    public String toReadableString() throws UnsupportedEncodingException;
     /*
     public int getSequenceNumber();
 

@@ -15,35 +15,39 @@ import org.apache.http.params.BasicHttpParams;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 
+
+
 /**
  *
  */
 public class ApacheRequestFactory {
-    public static HttpRequest create(final String requestAsString) {
-        try {
-            SessionInputBuffer inputBuffer = new AbstractSessionInputBuffer() {
-                {
-                    init(new ByteArrayInputStream(requestAsString.getBytes()), 10, new BasicHttpParams());
-                }
+    public static HttpRequest create(final String requestAsString) throws IOException, HttpException {
 
-                @Override
-                public boolean isDataAvailable(int timeout) throws IOException {
-                    throw new RuntimeException("have to override but probably not even called");
-                }
-            };
-            HttpMessageParser parser = new HttpRequestParser(inputBuffer, new BasicLineParser(new ProtocolVersion("HTTP", 1, 1)), new DefaultHttpRequestFactory(), new BasicHttpParams());
-            HttpMessage message = parser.parse();
-            if (message instanceof BasicHttpEntityEnclosingRequest) {
-                BasicHttpEntityEnclosingRequest request = (BasicHttpEntityEnclosingRequest) message;
-                EntityDeserializer entityDeserializer = new EntityDeserializer(new LaxContentLengthStrategy());
-                HttpEntity entity = entityDeserializer.deserialize(inputBuffer, message);
-                request.setEntity(entity);
+        SessionInputBuffer inputBuffer = new AbstractSessionInputBuffer() {
+            {
+                init(new ByteArrayInputStream(requestAsString.getBytes()), 10,
+                     new BasicHttpParams());
             }
-            return (HttpRequest) message;
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        } catch (HttpException e) {
-            throw new RuntimeException(e);
+
+
+            @Override
+            public boolean isDataAvailable(int timeout) throws IOException {
+                throw new RuntimeException("have to override but probably not even called");
+            }
+        };
+        HttpMessageParser parser =
+            new HttpRequestParser(inputBuffer,
+                                  new BasicLineParser(new ProtocolVersion("HTTP", 1, 1)),
+                                  new DefaultHttpRequestFactory(), new BasicHttpParams());
+        HttpMessage message = parser.parse();
+        if (message instanceof BasicHttpEntityEnclosingRequest) {
+            BasicHttpEntityEnclosingRequest request = (BasicHttpEntityEnclosingRequest) message;
+            EntityDeserializer entityDeserializer =
+                new EntityDeserializer(new LaxContentLengthStrategy());
+            HttpEntity entity = entityDeserializer.deserialize(inputBuffer, message);
+            request.setEntity(entity);
         }
+        return (HttpRequest) message;
+
     }
 }

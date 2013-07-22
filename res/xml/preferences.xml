@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android" >
+    <!--  <CheckBoxPreference
+        android:key="@string/isRunning_key"
+        android:summary="@string/running_switch_sum"
+        android:title="@string/running_switch_title"/>-->
+
+    <EditTextPreference
+        android:key="@string/host_key"
+        android:summary="@string/host_sum"
+        android:title="@string/host_title"
+        android:defaultValue="127.0.0.1"
+        />
+    <EditTextPreference
+        android:key="@string/port_key"
+        android:summary="@string/port_sum"
+        android:title="@string/port_title"
+        android:defaultValue="8080"/>
+
+
+</PreferenceScreen>

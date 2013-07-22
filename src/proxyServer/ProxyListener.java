@@ -9,6 +9,7 @@ import com.example.meshonandroid.pdu.AODVObserver;
 
 import adhoc.aodv.Node;
 import android.os.AsyncTask;
+import android.os.Handler;
 import android.util.Log;
 
 
@@ -19,11 +20,12 @@ public class ProxyListener extends Thread{
     private ServerSocket serverSocket = null;
     private boolean listening = true;
     private ContactManager contactManager;
+    private Handler msgHandler;
     int port = 8080; // default
     Node node;
     AODVObserver aodvobs;
 
-    public ProxyListener(int port, Node node, AODVObserver aodvobs) {
+    public ProxyListener(Handler msgHandler, int port, Node node, AODVObserver aodvobs) {
         super();
         this.port = port;
         this.node = node;
@@ -31,6 +33,7 @@ public class ProxyListener extends Thread{
         contactManager =  new ContactManager(node);
         aodvobs.addObserver(contactManager);
         reqNumber = 0;
+        this.msgHandler = msgHandler;
     }
 
     @Override
@@ -48,7 +51,7 @@ public class ProxyListener extends Thread{
                 Socket s = serverSocket.accept();
                 int c = contactManager.GetContact(getReqNumber());
                 Log.d(tag, "contactManager.GetContact() returned contact:"+c);
-                new ProxyThread(s, node, aodvobs, getReqNumber(), c).start();
+                new ProxyThread(s, node, aodvobs, getReqNumber(), c, msgHandler).start();
             } catch (IOException e) {
                 e.printStackTrace();
                 try {

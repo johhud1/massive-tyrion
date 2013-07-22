@@ -8,6 +8,7 @@ public class Constants {
     public static final byte PDU_EXITNODEREP = 3;
     public static final byte PDU_DATAREQMSG = 4;
     public static final byte PDU_DATAREPMSG = 5;
+    public static final byte PDU_IPDISCOVER = 6;
 
     public static final int EXITNODEREP_WAITTIME=700;
 
@@ -17,5 +18,12 @@ public class Constants {
         + "Etag: \"3f80f-1b6-3e1cb03b\"\n"
         + "Content-Type: text/html; charset=UTF-8\n" + "Content-Length: 240\n"
         + "Connection: close\n" + "request recieved\r\n\r\n";
+
+    public static final int IP_staleness_time = 5;
+
+    public static final int STATUS_MSG_CODE = 0;
+    public static final int LOG_MSG_CODE = 1;
+    public static final int TF_MSG_CODE = 2;
+    public static final int FT_MSG_CODE = 3;
 
 }
