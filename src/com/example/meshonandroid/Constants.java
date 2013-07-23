@@ -11,6 +11,7 @@ public class Constants {
     public static final byte PDU_IPDISCOVER = 6;
 
     public static final int EXITNODEREP_WAITTIME=700;
+    public static final int MAX_NODES = 254;
 
     public static final String fakeResp = "HTTP/1.1 200 OK\n" + "Date: Mon, 23 May 2005 22:38:34 GMT\n"
         + "Server: Apache/1.3.3.7 (Unix) (Red-Hat/Linux)\n"

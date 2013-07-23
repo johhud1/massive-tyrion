@@ -5,7 +5,6 @@ import java.util.Observable;
 import java.util.Observer;
 
 import com.example.meshonandroid.Constants;
-import com.example.meshonandroid.DataManager;
 import com.example.meshonandroid.HandlerActivity;
 import com.example.meshonandroid.MainPrefActivity;
 import com.example.meshonandroid.OutLinkManager;
@@ -15,6 +14,7 @@ import adhoc.aodv.ObserverConst;
 import adhoc.aodv.Node.MessageToObserver;
 import adhoc.aodv.Node.PacketToObserver;
 import adhoc.aodv.exception.BadPduFormatException;
+import android.content.Context;
 import android.os.Bundle;
 import android.os.Message;
 import android.util.Log;
@@ -23,14 +23,12 @@ import android.util.Log;
 
 public class AODVObserver extends Observable implements Observer {
     private OutLinkManager mTrafficMan;
-    private DataManager mDataMan;
     private HandlerActivity mActivity;
 
-    public AODVObserver(Node node, int mId, HandlerActivity mainActivity) {
+    public AODVObserver(Node node, int mId, HandlerActivity mainActivity, OutLinkManager oman) {
         node.addObserver(this);
-        mTrafficMan =  new OutLinkManager(true, node, mId, mainActivity.getHandler());
+        mTrafficMan =  oman;
         mActivity = mainActivity;
-        mDataMan = new DataManager(node);
         this.addObserver(mTrafficMan);
     }
 
@@ -126,27 +124,6 @@ public class AODVObserver extends Observable implements Observer {
                 ipMsg.parseBytes(data);
                 notifyObservers(ipMsg);
                 break;
-                /*
-            case Constants.PDU_CHAT_REQUEST:l
-
-                ChatRequest chatReq = new ChatRequest();
-                chatReq.parseBytes(data);
-                //("Recived: Chat Req :  "+chatReq.getSequenceNumber());
-                chatManager.chatRequestReceived(chatReq,senderID);
-                break;
-            case Constants.PDU_HELLO:
-
-                Hello hello = new Hello();
-                hello.parseBytes(data);
-                System.out.println("TxtMsg - Reciver: Hello from ID: "+senderID+", Return: " + hello.replyThisMessage());
-                contactManager.helloRecived(hello, senderID);
-                break;
-            case Constants.PDU_NO_SUCH_CHAT:
-                //("Recived: No s Chat");
-                NoSuchChat noSuchChat = new NoSuchChat();
-                noSuchChat.parseBytes(data);
-                chatManager.noSuchChatRecived(noSuchChat,senderID);
-                */
             default:
                 break;
             }

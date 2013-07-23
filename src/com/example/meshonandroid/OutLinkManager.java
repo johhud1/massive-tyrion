@@ -1,58 +1,40 @@
 package com.example.meshonandroid;
 
 import java.io.BufferedInputStream;
-import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.net.Socket;
-import java.net.URL;
-import java.net.URLConnection;
+import java.net.UnknownHostException;
 import java.util.Arrays;
 import java.util.Observable;
 import java.util.Observer;
 
 import org.apache.http.Header;
-import org.apache.http.HttpClientConnection;
 import org.apache.http.HttpException;
 import org.apache.http.HttpHost;
 import org.apache.http.HttpRequest;
-import org.apache.http.HttpRequestFactory;
 import org.apache.http.HttpResponse;
 import org.apache.http.StatusLine;
-import org.apache.http.client.ClientProtocolException;
-import org.apache.http.client.HttpClient;
-import org.apache.http.client.ResponseHandler;
-import org.apache.http.client.methods.HttpGet;
-import org.apache.http.client.params.ClientPNames;
-import org.apache.http.impl.DefaultHttpClientConnection;
-import org.apache.http.impl.DefaultHttpRequestFactory;
 import org.apache.http.impl.client.DefaultHttpClient;
-import org.apache.http.impl.conn.DefaultClientConnection;
-import org.apache.http.protocol.BasicHttpContext;
-import org.apache.http.protocol.DefaultedHttpContext;
-import org.apache.http.protocol.HTTP;
-import org.apache.http.protocol.HttpContext;
-import org.apache.http.protocol.HttpRequestExecutor;
 
 import proxyServer.ApacheRequestFactory;
-
-import com.example.meshonandroid.pdu.DataMsg;
-import com.example.meshonandroid.pdu.DataRepMsg;
-import com.example.meshonandroid.pdu.ExitNodeRepPDU;
-import com.example.meshonandroid.pdu.ExitNodeReqPDU;
-import com.example.meshonandroid.pdu.MeshPduInterface;
-
 import adhoc.aodv.Node;
-import adhoc.aodv.pdu.AodvPDU;
 import android.annotation.TargetApi;
+import android.content.Context;
+import android.net.ConnectivityManager;
+import android.net.NetworkInfo;
 import android.os.Build;
-import android.os.Bundle;
 import android.os.Handler;
 import android.os.Message;
 import android.util.Base64;
 import android.util.Log;
 import android.util.SparseIntArray;
+
+import com.example.meshonandroid.pdu.DataMsg;
+import com.example.meshonandroid.pdu.DataRepMsg;
+import com.example.meshonandroid.pdu.ExitNodeRepPDU;
+import com.example.meshonandroid.pdu.MeshPduInterface;
 
 
 
@@ -71,11 +53,12 @@ public class OutLinkManager implements Observer {
                                                                                               // reserved
                                                                                               // bytes;
 
-    private boolean mHaveData = true;
+    private boolean mActiveNode = false;
     private Node mNode;
     private int mContactId;
     private SparseIntArray mPortToContactID = new SparseIntArray();
     private Handler msgHandler;
+    private Context mContext;
 
     private static int BUFSIZE = 512;
     private byte[] responseBuf;
@@ -85,25 +68,36 @@ public class OutLinkManager implements Observer {
      * Constructor for creating a traffic manager.
      *
      * The traffic manager is responsible for responding to ExitNodeReqPDU's and
-     * for managing the mapping from local ports to Mesh network ID's (in order
-     * to forward traffic appropriately (think NAT))
+     * for managing the mapping from local requests to Mesh network ID's (in
+     * order to forward traffic appropriately (think NAT))
      *
      * @param
      */
-    public OutLinkManager(boolean haveData, Node node, int myID, Handler msgHandler) {
-        //mContactId = myID;
+    public OutLinkManager(boolean activeNode, Node node, int myID, Handler msgHandler, Context c) {
         mNode = node;
-        mHaveData = haveData;
+        mActiveNode = activeNode;
         this.msgHandler = msgHandler;
+        mContext = c;
     }
 
 
     public void connectionRequested(int senderID, MeshPduInterface msg) {
-        if (mHaveData) {
+        String tag = "OutLinkManager:connectionRequested";
+        if (mActiveNode && haveData()) {
+            Log.d(tag, "got connection request, seting up forwarding, responded with exitnoderep");
             setupForwardingConn(senderID, msg);
         } else {
-            // ignore
+            Log.d(tag,
+                  "got a connection request, but we're either inactive or have no data. ignoring request");
         }
+    }
+
+
+    private boolean haveData() {
+        ConnectivityManager connectivityManager =
+            (ConnectivityManager) mContext.getSystemService(Context.CONNECTIVITY_SERVICE);
+        NetworkInfo activeNetworkInfo = connectivityManager.getActiveNetworkInfo();
+        return activeNetworkInfo != null && activeNetworkInfo.isConnected();
     }
 
 
@@ -127,22 +121,23 @@ public class OutLinkManager implements Observer {
         switch (msg.getPduType()) {
         case Constants.PDU_DATAREQMSG:
             DataMsg dmsg = (DataMsg) msg;
+            int pid = dmsg.getPacketID();
+            // decode the http request
+            String httpRequest;
             try {
-                //decode the http request
-                String httpRequest =
-                    new String(Base64.decode(dmsg.getDataBytes(), 0), Constants.encoding);
+                httpRequest = new String(Base64.decode(dmsg.getDataBytes(), 0), Constants.encoding);
                 Log.d(tag, "got PDU_DATAREQMSG: " + httpRequest);
-                //create httpRequest from string representation
-                HttpRequest rq = ApacheRequestFactory.create(httpRequest);
-                ByteArrayOutputStream out = new ByteArrayOutputStream();
-                DefaultHttpClient dhc = new DefaultHttpClient();
                 try {
-                    //execute requested http request
+                    // create httpRequest from string representation
+                    HttpRequest rq = ApacheRequestFactory.create(httpRequest);
+                    ByteArrayOutputStream out = new ByteArrayOutputStream();
+                    DefaultHttpClient dhc = new DefaultHttpClient();
+                    // execute requested http request
                     HttpHost targetHost = new HttpHost(rq.getFirstHeader("Host").getValue());
                     HttpResponse myresp = dhc.execute(targetHost, rq);
 
-                    //parse out the response, putting it into out stream
-                    //handle statusline and headers
+                    // parse out the response, putting it into out stream
+                    // handle statusline and headers
                     StatusLine respSL = myresp.getStatusLine();
                     out.write((respSL.getProtocolVersion().toString() + " "
                                + respSL.getStatusCode() + " " + respSL.getReasonPhrase() + "\n")
@@ -153,7 +148,7 @@ public class OutLinkManager implements Observer {
                             .getBytes(Constants.encoding));
                     }
                     out.write(("\r\n").getBytes(Constants.encoding));
-                    //handle response content, if any
+                    // handle response content, if any
                     if (myresp.getEntity() != null) {
                         BufferedInputStream respStream =
                             new BufferedInputStream(myresp.getEntity().getContent());
@@ -186,50 +181,58 @@ public class OutLinkManager implements Observer {
                             }
                         }
                     }
-                } catch (ClientProtocolException e2) {
-                    e2.printStackTrace();
-                } catch (IOException e2) {
-                    e2.printStackTrace();
-                }
 
-                // base64 encode out (holding response data) and send it back to
-                // originator
-                int pid = dmsg.getPacketID();
-                byte[] outBArray = Base64.encode(out.toByteArray(), 0);
-                sendForwardedTrafficMsg(outBArray.length);
-                if (outBArray.length > MAX_PAYLOAD_SIZE) {
-                    //if response is too big to fit in one packet, chop it up.
-                    int offset = 0;
-                    int packs = (outBArray.length / MAX_PAYLOAD_SIZE) + 1;
-                    Log.d(tag, "user data to large (" + outBArray.length
-                               + ") to send over aodv in 1 msg. splitting into " + packs + " msgs");
-                    for (int i = 0; i < packs; i++) {
-                        byte[] temp =
-                            new byte[Math.min(MAX_PAYLOAD_SIZE, outBArray.length - offset)];
-                        try {
-                            temp = Arrays.copyOfRange(outBArray, offset, offset + temp.length);
-                            DataMsg respData =
-                                new DataRepMsg(mContactId, pid, msg.getBroadcastID(), temp, packs);
-                            byte[] msgBytes = respData.toBytes();
-                            mNode.sendData(pid, dmsg.getSourceID(), msgBytes);
-                            pid++;
-                            offset += MAX_PAYLOAD_SIZE;
-                        } catch (IOException e) {
-                            e.printStackTrace();
+                    // base64 encode out (holding response data) and send it
+                    // back to
+                    // originator
+                    byte[] outBArray = Base64.encode(out.toByteArray(), 0);
+                    sendForwardedTrafficMsg(outBArray.length);
+                    if (outBArray.length > MAX_PAYLOAD_SIZE) {
+                        // if response is too big to fit in one packet, chop it
+                        // up.
+                        int offset = 0;
+                        int packs = (outBArray.length / MAX_PAYLOAD_SIZE) + 1;
+                        Log.d(tag, "user data to large (" + outBArray.length
+                                   + ") to send over aodv in 1 msg. splitting into " + packs
+                                   + " msgs");
+                        for (int i = 0; i < packs; i++) {
+                            byte[] temp =
+                                new byte[Math.min(MAX_PAYLOAD_SIZE, outBArray.length - offset)];
+                            try {
+                                temp = Arrays.copyOfRange(outBArray, offset, offset + temp.length);
+                                DataMsg respData =
+                                    new DataRepMsg(mContactId, pid, msg.getBroadcastID(), temp,
+                                                   packs);
+                                byte[] msgBytes = respData.toBytes();
+                                mNode.sendData(pid, dmsg.getSourceID(), msgBytes);
+                                pid++;
+                                offset += MAX_PAYLOAD_SIZE;
+                            } catch (IOException e) {
+                                e.printStackTrace();
+                            }
                         }
+                    } else {
+                        // response fits in one packet, send 'er off
+                        DataMsg respData =
+                            new DataRepMsg(mContactId, pid, msg.getBroadcastID(), outBArray);
+                        mNode.sendData(pid, dmsg.getSourceID(), respData.toBytes());
                     }
-                } else {
-                    //response fits in one packet, send 'er off
-                    DataMsg respData =
-                        new DataRepMsg(mContactId, pid, msg.getBroadcastID(), outBArray);
-                    mNode.sendData(pid, dmsg.getSourceID(), respData.toBytes());
+                } catch (HttpException e2) {
+                    //CONNECT methods cause an HttpException in the ApacheRequestFactory
+                    //catch that, and if that was the cause of exception, handle appropriately.
+                    String[] request = httpRequest.split(" ");
+                    if (isConnectHttpRequest(request)) {
+                        handleConnectRequest(request, dmsg);
+                    } else {
+                        e2.printStackTrace();
+                    }
+                } catch (IOException e) {
+                    // TODO Auto-generated catch block
+                    e.printStackTrace();
                 }
-            } catch (UnsupportedEncodingException e) {
-                e.printStackTrace();
-            } catch (IOException e1) {
-                e1.printStackTrace();
-            } catch (HttpException e1) {
-                e1.printStackTrace();
+            } catch (UnsupportedEncodingException e4) {
+                // TODO Auto-generated catch block
+                e4.printStackTrace();
             }
             break;
         default:
@@ -238,7 +241,54 @@ public class OutLinkManager implements Observer {
 
     }
 
-    //forwarded traffic we are linking out to internet
+
+    private boolean isConnectHttpRequest(String[] request) {
+        if ("CONNECT".equalsIgnoreCase(request[0])) { return true; }
+        return false;
+    }
+
+
+    private void handleConnectRequest(String[] request, DataMsg dmsg) {
+        String tag = "OutLinkManager:handleConnectRequest";
+        int BUF_SIZE = 30000;
+        String[] addrPort = getAddrPort(request);
+        byte[] responseBuf = new byte[BUF_SIZE];
+        try {
+            Socket s = new Socket(addrPort[0], Integer.parseInt(addrPort[1]));
+            BufferedInputStream bis = new BufferedInputStream(s.getInputStream());
+            DataRepMsg resp = makeHttpConnectResponse(dmsg.getBroadcastID());
+            mNode.sendData(dmsg.getPacketID(), dmsg.getSourceID(), resp.toBytes());
+            int redd = 0;
+            while ((redd = bis.read(responseBuf)) != -1) {
+                Log.d(tag, "got " + redd + " more bytes from: " + addrPort[0]);
+            }
+        } catch (UnknownHostException e) {
+            // TODO Auto-generated catch block
+            e.printStackTrace();
+        } catch (IOException e) {
+            // TODO Auto-generated catch block
+            e.printStackTrace();
+        }
+        // TODO: make a tcp connection to whatever the request says it should
+
+    }
+
+
+    private DataRepMsg makeHttpConnectResponse(int broadcastId) throws UnsupportedEncodingException {
+        //ProtocolVersion pv = new ProtocolVersion("HTTP", 1, 1);
+        //HttpResponse resp = new DefaultHttpResponseFactory().newHttpResponse(new BasicStatusLine(pv, HttpStatus.SC_OK, "OK"), null);
+        String response = new String("HTTP/1.1 200 OK Connection Established\r\n\r\n");
+        DataRepMsg ret = new DataRepMsg(mNode.getNodeAddress(), 0, broadcastId, response.getBytes(Constants.encoding));
+        return ret;
+    }
+
+
+    private String[] getAddrPort(String[] httpRequest) {
+        return httpRequest[1].split(":");
+    }
+
+
+    // forwarded traffic we are linking out to internet
     private void sendForwardedTrafficMsg(int length) {
         Message m = new Message();
         m.arg1 = Constants.FT_MSG_CODE;

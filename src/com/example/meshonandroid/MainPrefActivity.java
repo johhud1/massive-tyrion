@@ -1,30 +1,8 @@
 package com.example.meshonandroid;
 
-import java.lang.reflect.Constructor;
-import java.lang.reflect.Field;
-import java.lang.reflect.Method;
-import java.net.BindException;
-import java.net.NetworkInterface;
-import java.net.SocketException;
-import java.net.UnknownHostException;
-import java.util.ArrayList;
-import java.util.Date;
-import java.util.List;
-
-import proxyServer.ProxyListener;
-import adhoc.aodv.Node;
-import adhoc.aodv.exception.InvalidNodeAddressException;
-import android.annotation.SuppressLint;
-import android.app.Activity;
-import android.content.Context;
 import android.content.SharedPreferences;
 import android.content.SharedPreferences.OnSharedPreferenceChangeListener;
-import android.net.wifi.WifiConfiguration;
-import android.net.wifi.WifiManager;
 import android.os.Bundle;
-import android.os.Handler;
-import android.os.Message;
-import android.os.StrictMode;
 import android.preference.CheckBoxPreference;
 import android.preference.EditTextPreference;
 import android.preference.PreferenceActivity;
@@ -32,15 +10,6 @@ import android.preference.PreferenceFragment;
 import android.preference.PreferenceManager;
 import android.util.Log;
 import android.view.Menu;
-import android.view.View;
-import android.view.View.OnClickListener;
-import android.webkit.WebView;
-import android.webkit.WebViewClient;
-import android.widget.Button;
-import android.widget.EditText;
-import android.widget.TextView;
-
-import com.example.meshonandroid.pdu.AODVObserver;
 
 
 
@@ -57,8 +26,6 @@ public class MainPrefActivity extends PreferenceActivity implements OnSharedPref
     int lastBroadcastId = 0;
     int lastDataRRId = 0;
     int myContactID;
-    Node myNode;
-
 
     private PreferenceFragment mPrefFrag;
 
@@ -78,14 +45,6 @@ public class MainPrefActivity extends PreferenceActivity implements OnSharedPref
 
         //myContactID = getMyID();
 
-    }
-
-    @Override
-    public void onDestroy() {
-        super.onDestroy();
-        if(myNode != null){
-            myNode.stopThread();
-        }
     }
 
     @Override

@@ -31,7 +31,7 @@ import android.util.Log;
 
 
 public class ProxyThread extends Thread implements Observer {
-    private static final int MAX_PACKETS = 20 ;
+    private static final int MAX_PACKETS = 80;
     private byte[][] packetBuf;
 
     private Socket socket = null;
@@ -44,7 +44,6 @@ public class ProxyThread extends Thread implements Observer {
     private int broadcastId;
     private int contactID;
     private int recievedPackets = 0;
-    private int expectedRespPackets = 1;
     private Handler msgHandler;
 
 
@@ -81,6 +80,7 @@ public class ProxyThread extends Thread implements Observer {
             while ((inputLine = in.readLine()) != null) {
                 try {
                     httpRequest += inputLine + '\n';
+                    ////////////////////////////////BEGIN useless debugging stuff that can be removed
                     StringTokenizer tok = new StringTokenizer(inputLine);
                     tok.nextToken();
                 } catch (Exception e) {
@@ -93,6 +93,7 @@ public class ProxyThread extends Thread implements Observer {
                     // can redirect this to output log
                     System.out.println("Request for : " + urlToCall);
                 }
+                //////////////////////////////////END USELESS debugging stuff that can be removed
 
                 cnt++;
             }
@@ -104,10 +105,10 @@ public class ProxyThread extends Thread implements Observer {
                 DataMsg dreq =
                     new DataReqMsg(node.getNodeAddress(), 0, broadcastId, Base64.encode(httpRequest
                         .getBytes(Constants.encoding), 0));
-                String junk = dreq.toString();
-                byte[] b = dreq.toBytes();
+               /*String junk = dreq.toString();
+               byte[] b = dreq.toBytes();
                 DataReqMsg asd = new DataReqMsg();
-                asd.parseBytes(b);
+                asd.parseBytes(b);*/
                 node.sendData(1, contactID, dreq.toBytes());
             } catch (UnsupportedEncodingException e) {
                 e.printStackTrace();
@@ -187,7 +188,7 @@ public class ProxyThread extends Thread implements Observer {
     }
 
   //traffic forwarded through the mesh on our behalf
-    private void sendTrafficForwardedMsg(int length) { 
+    private void sendTrafficForwardedMsg(int length) {
         Message m = new Message();
         m.arg1 = Constants.TF_MSG_CODE;
         m.arg2 = length;

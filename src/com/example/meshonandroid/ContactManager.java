@@ -1,19 +1,16 @@
 package com.example.meshonandroid;
 
-import java.util.AbstractMap;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Date;
-import java.util.HashMap;
 import java.util.Observable;
 import java.util.Observer;
 
+import adhoc.aodv.Node;
+import android.util.Log;
+
 import com.example.meshonandroid.pdu.ExitNodeReqPDU;
 import com.example.meshonandroid.pdu.MeshPduInterface;
-
-import adhoc.aodv.Node;
-import adhoc.aodv.Node.MessageToObserver;
-import android.util.Log;
 
 
 
