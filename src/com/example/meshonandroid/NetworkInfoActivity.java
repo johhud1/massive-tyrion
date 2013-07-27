@@ -63,6 +63,13 @@ public class NetworkInfoActivity extends Activity implements HandlerActivity {
         super.onCreate(savedInstanceState);
         adhoc.etc.Debug.setDebugStream(System.out);
 
+        try {
+            myNode = initializeStartNode();
+        } catch (Exception e) {
+            setTextView(R.id.status_tv, "Error initializing Node");
+            e.printStackTrace();
+        }
+
         setContentView(R.layout.netinfo_layout);
         handler = new Handler() {
             @Override
@@ -96,12 +103,6 @@ public class NetworkInfoActivity extends Activity implements HandlerActivity {
             }
         };
 
-        try {
-            myNode = initializeStartNode();
-        } catch (Exception e) {
-            setTextView(R.id.status_tv, "Error initializing Node");
-            e.printStackTrace();
-        }
 
         mWV = (WebView) findViewById(R.id.webView);
         Button sendUDPBroadcastBut = (Button) findViewById(R.id.sendUDPButton);
@@ -134,7 +135,7 @@ public class NetworkInfoActivity extends Activity implements HandlerActivity {
                 new Thread(new Runnable() {
                     /*
                      * (non-Javadoc)
-                     * 
+                     *
                      * @see java.lang.Runnable#run()
                      */
                     @Override
@@ -186,7 +187,7 @@ public class NetworkInfoActivity extends Activity implements HandlerActivity {
                     }
                 }).start();
 
-            } else {
+            } else if(myNode != null){
                 myNode.stopThread();
                 myNode.unBind();
                 try {
@@ -195,7 +196,6 @@ public class NetworkInfoActivity extends Activity implements HandlerActivity {
                     setTextView(R.id.status_tv, "Error stopping and reinitializing node");
                     e.printStackTrace();
                 }
-
             }
             break;
         }

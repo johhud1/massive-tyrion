@@ -9,6 +9,7 @@ public class Constants {
     public static final byte PDU_DATAREQMSG = 4;
     public static final byte PDU_DATAREPMSG = 5;
     public static final byte PDU_IPDISCOVER = 6;
+    public static final byte PDU_CONNECTDATAMSG = 7;
 
     public static final int EXITNODEREP_WAITTIME=700;
     public static final int MAX_NODES = 254;
@@ -27,4 +28,16 @@ public class Constants {
     public static final int TF_MSG_CODE = 2;
     public static final int FT_MSG_CODE = 3;
 
+
+    public static int MAX_PAYLOAD_SIZE = adhoc.aodv.Constants.MAX_PACKAGE_SIZE - (4 * 1000); // 8
+                                                                                              // ints
+                                                                                              // times
+                                                                                              // 4
+                                                                                              // bytes
+                                                                                              // per
+                                                                                              // int
+                                                                                              // =
+                                                                                              // total
+                                                                                              // reserved
+                                                                                              // bytes;
 }

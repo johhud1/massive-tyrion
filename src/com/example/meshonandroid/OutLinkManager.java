@@ -19,6 +19,7 @@ import org.apache.http.StatusLine;
 import org.apache.http.impl.client.DefaultHttpClient;
 
 import proxyServer.ApacheRequestFactory;
+import proxyServer.ConnectProxyThread;
 import adhoc.aodv.Node;
 import android.annotation.TargetApi;
 import android.content.Context;
@@ -31,6 +32,7 @@ import android.util.Base64;
 import android.util.Log;
 import android.util.SparseIntArray;
 
+import com.example.meshonandroid.pdu.ConnectDataMsg;
 import com.example.meshonandroid.pdu.DataMsg;
 import com.example.meshonandroid.pdu.DataRepMsg;
 import com.example.meshonandroid.pdu.ExitNodeRepPDU;
@@ -41,17 +43,6 @@ import com.example.meshonandroid.pdu.MeshPduInterface;
 @TargetApi(Build.VERSION_CODES.GINGERBREAD)
 public class OutLinkManager implements Observer {
 
-    private static int MAX_PAYLOAD_SIZE = adhoc.aodv.Constants.MAX_PACKAGE_SIZE - (4 * 1000); // 8
-                                                                                              // ints
-                                                                                              // times
-                                                                                              // 4
-                                                                                              // bytes
-                                                                                              // per
-                                                                                              // int
-                                                                                              // =
-                                                                                              // total
-                                                                                              // reserved
-                                                                                              // bytes;
 
     private boolean mActiveNode = false;
     private Node mNode;
@@ -62,6 +53,8 @@ public class OutLinkManager implements Observer {
 
     private static int BUFSIZE = 512;
     private byte[] responseBuf;
+
+    private Observable mAodvObserver;
 
 
     /**
@@ -121,119 +114,28 @@ public class OutLinkManager implements Observer {
         switch (msg.getPduType()) {
         case Constants.PDU_DATAREQMSG:
             DataMsg dmsg = (DataMsg) msg;
-            int pid = dmsg.getPacketID();
+            //int pid = dmsg.getPacketID();
             // decode the http request
             String httpRequest;
             try {
                 httpRequest = new String(Base64.decode(dmsg.getDataBytes(), 0), Constants.encoding);
                 Log.d(tag, "got PDU_DATAREQMSG: " + httpRequest);
-                try {
-                    // create httpRequest from string representation
-                    HttpRequest rq = ApacheRequestFactory.create(httpRequest);
-                    ByteArrayOutputStream out = new ByteArrayOutputStream();
-                    DefaultHttpClient dhc = new DefaultHttpClient();
-                    // execute requested http request
-                    HttpHost targetHost = new HttpHost(rq.getFirstHeader("Host").getValue());
-                    HttpResponse myresp = dhc.execute(targetHost, rq);
-
-                    // parse out the response, putting it into out stream
-                    // handle statusline and headers
-                    StatusLine respSL = myresp.getStatusLine();
-                    out.write((respSL.getProtocolVersion().toString() + " "
-                               + respSL.getStatusCode() + " " + respSL.getReasonPhrase() + "\n")
-                        .getBytes(Constants.encoding));
-                    Header[] headers = myresp.getAllHeaders();
-                    for (Header h : headers) {
-                        out.write((h.getName() + ": " + h.getValue() + "\n")
-                            .getBytes(Constants.encoding));
-                    }
-                    out.write(("\r\n").getBytes(Constants.encoding));
-                    // handle response content, if any
-                    if (myresp.getEntity() != null) {
-                        BufferedInputStream respStream =
-                            new BufferedInputStream(myresp.getEntity().getContent());
-                        long contLength = myresp.getEntity().getContentLength();
-                        Log.d(tag, "response Entity length: " + contLength);
-                        Header[] hs = myresp.getHeaders("Content-length");
-                        int bufLength = 0;
-                        if (hs.length > 0) {
-                            Header hContLength = hs[0];// there may be a
-                                                       // mismatch between
-                                                       // contLength and
-                                                       // buflength, could
-                                                       // present a problem.
-                                                       // idk.
-                            bufLength = new Integer(hContLength.getValue());
-                        }
-                        int redd = 0;
-                        int offset = 0;
-                        if (contLength > 0) {
-                            // write the response from responseBuf to out
-                            responseBuf = new byte[bufLength];
-                            while ((redd = respStream.read(responseBuf, 0, bufLength)) != -1) {
-                                out.write(responseBuf, 0, redd);
-                                // offset += redd;
-                            }
-                        } else {
-                            responseBuf = new byte[BUFSIZE];
-                            while ((redd = respStream.read(responseBuf, 0, BUFSIZE)) > 0) {
-                                out.write(responseBuf, 0, redd);
-                            }
-                        }
-                    }
-
-                    // base64 encode out (holding response data) and send it
-                    // back to
-                    // originator
-                    byte[] outBArray = Base64.encode(out.toByteArray(), 0);
-                    sendForwardedTrafficMsg(outBArray.length);
-                    if (outBArray.length > MAX_PAYLOAD_SIZE) {
-                        // if response is too big to fit in one packet, chop it
-                        // up.
-                        int offset = 0;
-                        int packs = (outBArray.length / MAX_PAYLOAD_SIZE) + 1;
-                        Log.d(tag, "user data to large (" + outBArray.length
-                                   + ") to send over aodv in 1 msg. splitting into " + packs
-                                   + " msgs");
-                        for (int i = 0; i < packs; i++) {
-                            byte[] temp =
-                                new byte[Math.min(MAX_PAYLOAD_SIZE, outBArray.length - offset)];
-                            try {
-                                temp = Arrays.copyOfRange(outBArray, offset, offset + temp.length);
-                                DataMsg respData =
-                                    new DataRepMsg(mContactId, pid, msg.getBroadcastID(), temp,
-                                                   packs);
-                                byte[] msgBytes = respData.toBytes();
-                                mNode.sendData(pid, dmsg.getSourceID(), msgBytes);
-                                pid++;
-                                offset += MAX_PAYLOAD_SIZE;
-                            } catch (IOException e) {
-                                e.printStackTrace();
-                            }
-                        }
-                    } else {
-                        // response fits in one packet, send 'er off
-                        DataMsg respData =
-                            new DataRepMsg(mContactId, pid, msg.getBroadcastID(), outBArray);
-                        mNode.sendData(pid, dmsg.getSourceID(), respData.toBytes());
-                    }
-                } catch (HttpException e2) {
-                    //CONNECT methods cause an HttpException in the ApacheRequestFactory
-                    //catch that, and if that was the cause of exception, handle appropriately.
-                    String[] request = httpRequest.split(" ");
-                    if (isConnectHttpRequest(request)) {
-                        handleConnectRequest(request, dmsg);
-                    } else {
-                        e2.printStackTrace();
-                    }
-                } catch (IOException e) {
-                    // TODO Auto-generated catch block
-                    e.printStackTrace();
+                // CONNECT methods cause an HttpException in the
+                // ApacheRequestFactory
+                // catch that, and if that was the cause of exception, handle
+                // appropriately.
+                String[] request = httpRequest.split(" ");
+                if (isConnectHttpRequest(request)) {
+                    handleConnectRequest(request, dmsg);
+                } else {
+                        new Thread(new HttpFetcher(httpRequest, dmsg, mNode, msgHandler)).start();
                 }
             } catch (UnsupportedEncodingException e4) {
                 // TODO Auto-generated catch block
                 e4.printStackTrace();
             }
+            break;
+        case Constants.PDU_CONNECTDATAMSG:
             break;
         default:
             Log.d(tag, "got something not PDU_DATAREQMSG");
@@ -250,23 +152,22 @@ public class OutLinkManager implements Observer {
 
     private void handleConnectRequest(String[] request, DataMsg dmsg) {
         String tag = "OutLinkManager:handleConnectRequest";
-        int BUF_SIZE = 30000;
+
         String[] addrPort = getAddrPort(request);
-        byte[] responseBuf = new byte[BUF_SIZE];
+        byte[] responseBuf = new byte[BUFSIZE];
         try {
-            Socket s = new Socket(addrPort[0], Integer.parseInt(addrPort[1]));
-            BufferedInputStream bis = new BufferedInputStream(s.getInputStream());
-            DataRepMsg resp = makeHttpConnectResponse(dmsg.getBroadcastID());
+            Socket targetConn = new Socket(addrPort[0], Integer.parseInt(addrPort[1]));
+            new ConnectProxyThread(targetConn, mNode, dmsg, true, mAodvObserver).start();
+            // BufferedInputStream bis = new
+            // BufferedInputStream(mConnectSocket.getInputStream());
+            ConnectDataMsg resp = makeHttpConnectResponse(dmsg.getBroadcastID());
             mNode.sendData(dmsg.getPacketID(), dmsg.getSourceID(), resp.toBytes());
-            int redd = 0;
-            while ((redd = bis.read(responseBuf)) != -1) {
-                Log.d(tag, "got " + redd + " more bytes from: " + addrPort[0]);
-            }
         } catch (UnknownHostException e) {
             // TODO Auto-generated catch block
             e.printStackTrace();
         } catch (IOException e) {
-            // TODO Auto-generated catch block
+            Log.e(tag, "error creating CONNECT connection to target host:" + addrPort[0] + ":"
+                       + addrPort[1]);
             e.printStackTrace();
         }
         // TODO: make a tcp connection to whatever the request says it should
@@ -274,11 +175,12 @@ public class OutLinkManager implements Observer {
     }
 
 
-    private DataRepMsg makeHttpConnectResponse(int broadcastId) throws UnsupportedEncodingException {
-        //ProtocolVersion pv = new ProtocolVersion("HTTP", 1, 1);
-        //HttpResponse resp = new DefaultHttpResponseFactory().newHttpResponse(new BasicStatusLine(pv, HttpStatus.SC_OK, "OK"), null);
+    private ConnectDataMsg
+        makeHttpConnectResponse(int broadcastId) throws UnsupportedEncodingException {
         String response = new String("HTTP/1.1 200 OK Connection Established\r\n\r\n");
-        DataRepMsg ret = new DataRepMsg(mNode.getNodeAddress(), 0, broadcastId, response.getBytes(Constants.encoding));
+        ConnectDataMsg ret =
+            new ConnectDataMsg(mNode.getNodeAddress(), 0, broadcastId, Base64.encode(response
+                .getBytes(Constants.encoding), 0), false, true);
         return ret;
     }
 
@@ -288,11 +190,12 @@ public class OutLinkManager implements Observer {
     }
 
 
-    // forwarded traffic we are linking out to internet
-    private void sendForwardedTrafficMsg(int length) {
-        Message m = new Message();
-        m.arg1 = Constants.FT_MSG_CODE;
-        m.arg2 = length;
-        msgHandler.sendMessage(m);
+
+
+    // THIS IS THE WORST THING I'VE EVER DONE. and there's more in AODVObservers
+    // constructor. this madness should really be contained.
+    public void setAODVObserver(Observable aodvObserver) {
+        this.mAodvObserver = aodvObserver;
+
     }
 }

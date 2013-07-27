@@ -8,6 +8,7 @@ import com.example.meshonandroid.Constants;
 import com.example.meshonandroid.HandlerActivity;
 import com.example.meshonandroid.MainPrefActivity;
 import com.example.meshonandroid.OutLinkManager;
+import com.example.meshonandroid.Utils;
 
 import adhoc.aodv.Node;
 import adhoc.aodv.ObserverConst;
@@ -22,14 +23,15 @@ import android.util.Log;
 
 
 public class AODVObserver extends Observable implements Observer {
-    private OutLinkManager mTrafficMan;
+    private OutLinkManager mOutLinkManager;
     private HandlerActivity mActivity;
 
     public AODVObserver(Node node, int mId, HandlerActivity mainActivity, OutLinkManager oman) {
         node.addObserver(this);
-        mTrafficMan =  oman;
+        mOutLinkManager =  oman;
+        mOutLinkManager.setAODVObserver(this);
         mActivity = mainActivity;
-        this.addObserver(mTrafficMan);
+        this.addObserver(mOutLinkManager);
     }
 
     @Override
@@ -107,7 +109,7 @@ public class AODVObserver extends Observable implements Observer {
                 Log.d(tag, exitMsg.toReadableString());
                 notifyObservers(exitMsg);
                 //notifyObservers("recieved PDU_EXITNODEREQ: "+exitMsg.toReadableString());
-                mTrafficMan.connectionRequested(senderID, exitMsg); //sets up neccessary state and send reply;
+                mOutLinkManager.connectionRequested(senderID, exitMsg); //sets up neccessary state and send reply;
                 break;
             case Constants.PDU_EXITNODEREP:
                 System.out.println("Received: PDU Exit Node Reply msg");
@@ -124,6 +126,14 @@ public class AODVObserver extends Observable implements Observer {
                 ipMsg.parseBytes(data);
                 notifyObservers(ipMsg);
                 break;
+            case Constants.PDU_CONNECTDATAMSG:
+                System.out.println("Recieved: ConnectData msg");
+                setMainTextViewWithString("Recieved ConnectDataMsg");
+                ConnectDataMsg cMsg = new ConnectDataMsg();
+                cMsg.parseBytes(data);
+                Log.d(tag, cMsg.toReadableString());
+                notifyObservers(cMsg);
+                break;
             default:
                 break;
             }
@@ -138,13 +148,7 @@ public class AODVObserver extends Observable implements Observer {
     }
 
     private void setMainTextViewWithString(String s){
-        String tag = "AODVObserver:sendMsgWithString";
-        Message m = new Message();
-        m.arg1 = Constants.LOG_MSG_CODE;
-        Bundle b = new Bundle();
-        b.putString("msg", s);
-        m.setData(b);
-        mActivity.getHandler().sendMessage(m);
+        Utils.addMsgToMainTextLog(mActivity.getHandler(), s);
     }
 
 }

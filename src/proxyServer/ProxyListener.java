@@ -11,6 +11,7 @@ import android.util.Log;
 
 import com.example.meshonandroid.ContactManager;
 import com.example.meshonandroid.ContactManager.NoContactsAvailableException;
+import com.example.meshonandroid.Utils;
 import com.example.meshonandroid.pdu.AODVObserver;
 
 
@@ -63,6 +64,7 @@ public class ProxyListener extends Thread {
                     e1.printStackTrace();
                 }
             } catch (NoContactsAvailableException e) {
+                Utils.addMsgToMainTextLog(msgHandler, "No available contacts found in mesh");
                 e.printStackTrace();
             }
         }

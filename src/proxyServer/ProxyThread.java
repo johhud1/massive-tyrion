@@ -17,6 +17,7 @@ import org.apache.http.protocol.DefaultedHttpContext;
 
 import com.example.meshonandroid.Constants;
 import com.example.meshonandroid.pdu.AODVObserver;
+import com.example.meshonandroid.pdu.ConnectDataMsg;
 import com.example.meshonandroid.pdu.DataMsg;
 import com.example.meshonandroid.pdu.DataReqMsg;
 import com.example.meshonandroid.pdu.ExitNodeReqPDU;
@@ -31,7 +32,7 @@ import android.util.Log;
 
 
 public class ProxyThread extends Thread implements Observer {
-    private static final int MAX_PACKETS = 80;
+    private static final int MAX_PACKETS = 200; //this number is arbitrary
     private byte[][] packetBuf;
 
     private Socket socket = null;
@@ -39,12 +40,14 @@ public class ProxyThread extends Thread implements Observer {
 
     //
     private DataOutputStream out;
+    private BufferedReader in;
     private String httpRequest;
     private AODVObserver mAodvObs;
     private int broadcastId;
     private int contactID;
     private int recievedPackets = 0;
     private Handler msgHandler;
+    private ConnectProxyThread mConnectProxyThread;
 
 
     public ProxyThread(Socket socket, Node node, AODVObserver aodvObs, int reqNumber, Handler msgHandler) {
@@ -69,7 +72,7 @@ public class ProxyThread extends Thread implements Observer {
     public void run() {
         try {
             out = new DataOutputStream(socket.getOutputStream());
-            BufferedReader in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
+            in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
 
             String inputLine, outputLine;
             int cnt = 0;
@@ -105,10 +108,6 @@ public class ProxyThread extends Thread implements Observer {
                 DataMsg dreq =
                     new DataReqMsg(node.getNodeAddress(), 0, broadcastId, Base64.encode(httpRequest
                         .getBytes(Constants.encoding), 0));
-               /*String junk = dreq.toString();
-               byte[] b = dreq.toBytes();
-                DataReqMsg asd = new DataReqMsg();
-                asd.parseBytes(b);*/
                 node.sendData(1, contactID, dreq.toBytes());
             } catch (UnsupportedEncodingException e) {
                 e.printStackTrace();
@@ -125,6 +124,7 @@ public class ProxyThread extends Thread implements Observer {
     public void update(Observable observable, Object data) {
         String tag = "ProxyThread:update";
         MeshPduInterface msg = (MeshPduInterface) data;
+        DataMsg dmsg;
         try {
             Log.d(tag, "got msg: " + msg.toReadableString());
         } catch (UnsupportedEncodingException e1) {
@@ -139,7 +139,7 @@ public class ProxyThread extends Thread implements Observer {
             switch (msg.getPduType()) {
             case Constants.PDU_DATAREPMSG:
                 Log.d(tag, "got pdu_datamsg");
-                DataMsg dmsg = (DataMsg) msg;
+                dmsg = (DataMsg) msg;
 
                 packetBuf[recievedPackets] = dmsg.getDataBytes(); // undecoded
                                                                   // b64 bytes
@@ -174,6 +174,35 @@ public class ProxyThread extends Thread implements Observer {
             case Constants.PDU_EXITNODEREQ:
                 Log.d(tag, "got PDU_EXITNODEREQ");
                 // do nothing
+                break;
+            case Constants.PDU_DATAMSG:
+                dmsg = (DataMsg) msg;
+                Log.d(tag, "got PDU_DATAMSG");
+                break;
+            case Constants.PDU_CONNECTDATAMSG:
+                Log.d(tag, "got PDU_CONNECTDATAMSG");
+                ConnectDataMsg cdm = (ConnectDataMsg) msg;
+                if(!cdm.isReq() && cdm.isConnectionSetupMsg()){
+                    //initial response from outlink, after recieving a CONNECTION method dataReqMsg (should be "OK 200 Connection Established")
+                    //here we setup ConnectionProxy thread, which will run, reading from the socket, and buffering the stream into ConnectDataMsg's
+                    new ConnectProxyThread(socket, node, cdm, false, mAodvObs).start();
+                    byte[] b = Base64.decode(cdm.getDataBytes(), 0);
+                    try {
+                        String debug = new String(b, Constants.encoding);
+                        out.write(b);
+                    } catch (IOException e) {
+                        e.printStackTrace();
+                    }
+                } else if(!cdm.isReq() && !cdm.isConnectionSetupMsg()){
+                    //data response from outlink, for CONNECTION method links
+                    //here we pull data out of the msg, and write it out to the client, at socket
+                     byte[] b = Base64.decode(cdm.getDataBytes(), 0);
+                    try {
+                        out.write(b);
+                    } catch (IOException e) {
+                        e.printStackTrace();
+                    }
+                }
                 break;
             default:
                 Log.d(tag, "default switch");

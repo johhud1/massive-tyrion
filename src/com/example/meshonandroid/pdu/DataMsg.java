@@ -27,8 +27,8 @@ public class DataMsg implements MeshPduInterface {
      * @param broadcastId
      *            along with the source address this number uniquely identifies
      *            this route request PDU
-     * @param lastFrag
-     *          boolean field indicating whether there are more packets for this DataMsg
+     * @param numRespPackets
+     *          field indicating how many packets the data had to be split into
      *
      */
     public DataMsg(int srcId, int packetID, int broadcastId, byte type, byte[] data, int numRespPackets) {
@@ -86,7 +86,7 @@ public class DataMsg implements MeshPduInterface {
     @Override
     public void parseBytes(byte[] rawPdu) throws BadPduFormatException {
         String tag = "DataMsg:parseBytes";
-        String[] s = new String(rawPdu).split(";", 7);
+        String[] s = new String(rawPdu).split(";", 8);
         if (s.length != 6) { throw new BadPduFormatException(
                                                              "RREQ_DATA: could not split "
                                                                  + "the expected # of arguments from rawPdu. "
