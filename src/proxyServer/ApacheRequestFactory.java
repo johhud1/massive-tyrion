@@ -1,19 +1,24 @@
 package proxyServer;
 
-import org.apache.http.*;
-import org.apache.http.impl.DefaultHttpRequestFactory;
-import org.apache.http.impl.entity.EntityDeserializer;
-import org.apache.http.impl.entity.LaxContentLengthStrategy;
-import org.apache.http.impl.io.AbstractSessionInputBuffer;
-import org.apache.http.impl.io.HttpRequestParser;
-import org.apache.http.io.HttpMessageParser;
-import org.apache.http.io.SessionInputBuffer;
-import org.apache.http.message.BasicHttpEntityEnclosingRequest;
-import org.apache.http.message.BasicLineParser;
-import org.apache.http.params.BasicHttpParams;
 
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
+
+import ch.boye.httpclientandroidlib.HttpEntity;
+import ch.boye.httpclientandroidlib.HttpException;
+import ch.boye.httpclientandroidlib.HttpMessage;
+import ch.boye.httpclientandroidlib.HttpRequest;
+import ch.boye.httpclientandroidlib.ProtocolVersion;
+import ch.boye.httpclientandroidlib.impl.DefaultHttpRequestFactory;
+import ch.boye.httpclientandroidlib.impl.entity.EntityDeserializer;
+import ch.boye.httpclientandroidlib.impl.entity.LaxContentLengthStrategy;
+import ch.boye.httpclientandroidlib.impl.io.AbstractSessionInputBuffer;
+import ch.boye.httpclientandroidlib.impl.io.HttpRequestParser;
+import ch.boye.httpclientandroidlib.io.HttpMessageParser;
+import ch.boye.httpclientandroidlib.io.SessionInputBuffer;
+import ch.boye.httpclientandroidlib.message.BasicHttpEntityEnclosingRequest;
+import ch.boye.httpclientandroidlib.message.BasicLineParser;
+import ch.boye.httpclientandroidlib.params.BasicHttpParams;
 
 
 
@@ -23,7 +28,7 @@ import java.io.IOException;
 public class ApacheRequestFactory {
     public static HttpRequest create(final String requestAsString) throws IOException, HttpException {
 
-        SessionInputBuffer inputBuffer = new AbstractSessionInputBuffer() {
+        SessionInputBuffer inputBuffer = new AbstractSessionInputBuffer(){
             {
                 init(new ByteArrayInputStream(requestAsString.getBytes()), 10,
                      new BasicHttpParams());

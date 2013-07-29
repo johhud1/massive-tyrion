@@ -19,6 +19,7 @@ import com.example.meshonandroid.Constants;
 import com.example.meshonandroid.pdu.AODVObserver;
 import com.example.meshonandroid.pdu.ConnectDataMsg;
 import com.example.meshonandroid.pdu.DataMsg;
+import com.example.meshonandroid.pdu.DataRepMsg;
 import com.example.meshonandroid.pdu.DataReqMsg;
 import com.example.meshonandroid.pdu.ExitNodeReqPDU;
 import com.example.meshonandroid.pdu.MeshPduInterface;
@@ -32,8 +33,10 @@ import android.util.Log;
 
 
 public class ProxyThread extends Thread implements Observer {
-    private static final int MAX_PACKETS = 200; //this number is arbitrary
-    private byte[][] packetBuf;
+    private static final int MAX_PACKETS = 200; // this number is arbitrary
+    // private byte[][] packetBuf;
+    private DataRepMsg[] packetBuf;
+    private static final int WINDOW_SIZE = 10;
 
     private Socket socket = null;
     private Node node;
@@ -50,7 +53,8 @@ public class ProxyThread extends Thread implements Observer {
     private ConnectProxyThread mConnectProxyThread;
 
 
-    public ProxyThread(Socket socket, Node node, AODVObserver aodvObs, int reqNumber, Handler msgHandler) {
+    public ProxyThread(Socket socket, Node node, AODVObserver aodvObs, int reqNumber,
+                       Handler msgHandler) {
         super("ProxyThread");
         this.socket = socket;
         this.node = node;
@@ -58,7 +62,7 @@ public class ProxyThread extends Thread implements Observer {
         mAodvObs = aodvObs;
         this.msgHandler = msgHandler;
         this.broadcastId = reqNumber;
-        packetBuf = new byte[MAX_PACKETS][];
+        packetBuf = new DataRepMsg[WINDOW_SIZE];
     }
 
 
@@ -83,7 +87,8 @@ public class ProxyThread extends Thread implements Observer {
             while ((inputLine = in.readLine()) != null) {
                 try {
                     httpRequest += inputLine + '\n';
-                    ////////////////////////////////BEGIN useless debugging stuff that can be removed
+                    // //////////////////////////////BEGIN useless debugging
+                    // stuff that can be removed
                     StringTokenizer tok = new StringTokenizer(inputLine);
                     tok.nextToken();
                 } catch (Exception e) {
@@ -96,7 +101,8 @@ public class ProxyThread extends Thread implements Observer {
                     // can redirect this to output log
                     System.out.println("Request for : " + urlToCall);
                 }
-                //////////////////////////////////END USELESS debugging stuff that can be removed
+                // ////////////////////////////////END USELESS debugging stuff
+                // that can be removed
 
                 cnt++;
             }
@@ -108,7 +114,7 @@ public class ProxyThread extends Thread implements Observer {
                 DataMsg dreq =
                     new DataReqMsg(node.getNodeAddress(), 0, broadcastId, Base64.encode(httpRequest
                         .getBytes(Constants.encoding), 0));
-                node.sendData(1, contactID, dreq.toBytes());
+                node.sendData(0, contactID, dreq.toBytes());
             } catch (UnsupportedEncodingException e) {
                 e.printStackTrace();
             }
@@ -123,8 +129,7 @@ public class ProxyThread extends Thread implements Observer {
     @Override
     public void update(Observable observable, Object data) {
         String tag = "ProxyThread:update";
-        MeshPduInterface msg = (MeshPduInterface) data;
-        DataMsg dmsg;
+        MeshPduInterface msg = (MeshPduInterface) data;;
         try {
             Log.d(tag, "got msg: " + msg.toReadableString());
         } catch (UnsupportedEncodingException e1) {
@@ -139,35 +144,55 @@ public class ProxyThread extends Thread implements Observer {
             switch (msg.getPduType()) {
             case Constants.PDU_DATAREPMSG:
                 Log.d(tag, "got pdu_datamsg");
-                dmsg = (DataMsg) msg;
+                DataRepMsg dmsg = (DataRepMsg) msg;
 
-                packetBuf[recievedPackets] = dmsg.getDataBytes(); // undecoded
-                                                                  // b64 bytes
-                recievedPackets++;
-
-                if (recievedPackets == dmsg.getNumRespPackets()) {
-                    byte[] reconstructedResp;
-                    ByteArrayOutputStream bOS = new ByteArrayOutputStream();
-                    try {
-                        int offset = 0;
-                        for (int i = 0; i < recievedPackets; i++) {
-                            bOS.write(packetBuf[i]);
-                        }
-                        byte[] outArray = bOS.toByteArray();
+                packetBuf[(dmsg.getPacketID() % WINDOW_SIZE)] = dmsg;
+                // decoded
+                // b64 bytes
+                try {
+                    if (recievedPackets == dmsg.getPacketID()) {
+                        byte[] outArray = Base64.decode(dmsg.getDataBytes(), 0);
                         sendTrafficForwardedMsg(outArray.length);
-                        out.write(Base64.decode(outArray, 0));
+                        String respMsg = new String(outArray, Constants.encoding);
+                        out.write(outArray);
                         out.flush();
-                        if (socket != null) {
-                            // done. close out the socket, and remove this as an
+                        if (socket != null && !dmsg.getAreMorePackets()) {
+                            // done. close out the socket, and remove this
+                            // as an
                             // aodv
                             // observer
                             mAodvObs.deleteObserver(this);
                             socket.close();
                         }
-                    } catch (IOException e) {
-                        e.printStackTrace();
+                        recievedPackets++;
+                    } else {
+                        //we got a packet out of order, write out anything that we can
+                        //ie anything after index recievedPackets
+                        while(packetBuf[recievedPackets % WINDOW_SIZE]!=null
+                            && isMoreRecent(packetBuf[(recievedPackets+1) % WINDOW_SIZE], packetBuf[recievedPackets % WINDOW_SIZE])){
+                            byte[] outArray = Base64.decode(packetBuf[recievedPackets].getDataBytes(), 0);
+                            sendTrafficForwardedMsg(outArray.length);
+                            // byte[] response = Base64.decode(outArray, 0);
+                            String respMsg = new String(outArray, Constants.encoding);
+                            out.write(outArray);
+                            out.flush();
+                            if (socket != null && !dmsg.getAreMorePackets()) {
+                                // done. close out the socket, and remove this
+                                // as an
+                                // aodv
+                                // observer
+                                mAodvObs.deleteObserver(this);
+                                socket.close();
+                            }
+                            recievedPackets++;
+                        }
+
                     }
+                } catch (Exception e) {
+                    e.printStackTrace();
+                    mAodvObs.deleteObserver(this);
                 }
+
                 break;
             case Constants.PDU_EXITNODEREP:
                 break;
@@ -176,15 +201,18 @@ public class ProxyThread extends Thread implements Observer {
                 // do nothing
                 break;
             case Constants.PDU_DATAMSG:
-                dmsg = (DataMsg) msg;
                 Log.d(tag, "got PDU_DATAMSG");
                 break;
             case Constants.PDU_CONNECTDATAMSG:
                 Log.d(tag, "got PDU_CONNECTDATAMSG");
                 ConnectDataMsg cdm = (ConnectDataMsg) msg;
-                if(!cdm.isReq() && cdm.isConnectionSetupMsg()){
-                    //initial response from outlink, after recieving a CONNECTION method dataReqMsg (should be "OK 200 Connection Established")
-                    //here we setup ConnectionProxy thread, which will run, reading from the socket, and buffering the stream into ConnectDataMsg's
+                if (!cdm.isReq() && cdm.isConnectionSetupMsg()) {
+                    // initial response from outlink, after recieving a
+                    // CONNECTION method dataReqMsg (should be
+                    // "OK 200 Connection Established")
+                    // here we setup ConnectionProxy thread, which will run,
+                    // reading from the socket, and buffering the stream into
+                    // ConnectDataMsg's
                     new ConnectProxyThread(socket, node, cdm, false, mAodvObs).start();
                     byte[] b = Base64.decode(cdm.getDataBytes(), 0);
                     try {
@@ -193,10 +221,11 @@ public class ProxyThread extends Thread implements Observer {
                     } catch (IOException e) {
                         e.printStackTrace();
                     }
-                } else if(!cdm.isReq() && !cdm.isConnectionSetupMsg()){
-                    //data response from outlink, for CONNECTION method links
-                    //here we pull data out of the msg, and write it out to the client, at socket
-                     byte[] b = Base64.decode(cdm.getDataBytes(), 0);
+                } else if (!cdm.isReq() && !cdm.isConnectionSetupMsg()) {
+                    // data response from outlink, for CONNECTION method links
+                    // here we pull data out of the msg, and write it out to the
+                    // client, at socket
+                    byte[] b = Base64.decode(cdm.getDataBytes(), 0);
                     try {
                         out.write(b);
                     } catch (IOException e) {
@@ -216,7 +245,13 @@ public class ProxyThread extends Thread implements Observer {
         }
     }
 
-  //traffic forwarded through the mesh on our behalf
+
+    private boolean isMoreRecent(DataRepMsg first, DataRepMsg other) {
+       return (first.getPacketID() > other.getPacketID());
+    }
+
+
+    // traffic forwarded through the mesh on our behalf
     private void sendTrafficForwardedMsg(int length) {
         Message m = new Message();
         m.arg1 = Constants.TF_MSG_CODE;

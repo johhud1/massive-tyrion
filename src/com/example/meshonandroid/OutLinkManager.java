@@ -5,18 +5,11 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.net.Socket;
+import java.net.URI;
 import java.net.UnknownHostException;
 import java.util.Arrays;
 import java.util.Observable;
 import java.util.Observer;
-
-import org.apache.http.Header;
-import org.apache.http.HttpException;
-import org.apache.http.HttpHost;
-import org.apache.http.HttpRequest;
-import org.apache.http.HttpResponse;
-import org.apache.http.StatusLine;
-import org.apache.http.impl.client.DefaultHttpClient;
 
 import proxyServer.ApacheRequestFactory;
 import proxyServer.ConnectProxyThread;
@@ -31,6 +24,16 @@ import android.os.Message;
 import android.util.Base64;
 import android.util.Log;
 import android.util.SparseIntArray;
+
+import ch.boye.httpclientandroidlib.HttpRequest;
+import ch.boye.httpclientandroidlib.HttpResponse;
+import ch.boye.httpclientandroidlib.ProtocolException;
+import ch.boye.httpclientandroidlib.client.RedirectHandler;
+import ch.boye.httpclientandroidlib.client.RedirectStrategy;
+import ch.boye.httpclientandroidlib.client.methods.HttpUriRequest;
+import ch.boye.httpclientandroidlib.impl.client.DefaultHttpClient;
+import ch.boye.httpclientandroidlib.impl.conn.PoolingClientConnectionManager;
+import ch.boye.httpclientandroidlib.protocol.HttpContext;
 
 import com.example.meshonandroid.pdu.ConnectDataMsg;
 import com.example.meshonandroid.pdu.DataMsg;
@@ -50,6 +53,7 @@ public class OutLinkManager implements Observer {
     private SparseIntArray mPortToContactID = new SparseIntArray();
     private Handler msgHandler;
     private Context mContext;
+    private DefaultHttpClient dhc;
 
     private static int BUFSIZE = 512;
     private byte[] responseBuf;
@@ -71,6 +75,25 @@ public class OutLinkManager implements Observer {
         mActiveNode = activeNode;
         this.msgHandler = msgHandler;
         mContext = c;
+        dhc = new DefaultHttpClient(new PoolingClientConnectionManager());
+        dhc.setRedirectStrategy(new RedirectStrategy() {
+
+            @Override
+            public boolean
+                isRedirected(HttpRequest arg0, HttpResponse arg1, HttpContext arg2)
+                                                                                   throws ProtocolException {
+                // TODO Auto-generated method stub
+                return false;
+            }
+
+
+            @Override
+            public HttpUriRequest
+                getRedirect(HttpRequest arg0, HttpResponse arg1, HttpContext arg2) throws ProtocolException {
+                // TODO Auto-generated method stub
+                return null;
+            }
+        });
     }
 
 
@@ -79,6 +102,7 @@ public class OutLinkManager implements Observer {
         if (mActiveNode && haveData()) {
             Log.d(tag, "got connection request, seting up forwarding, responded with exitnoderep");
             setupForwardingConn(senderID, msg);
+
         } else {
             Log.d(tag,
                   "got a connection request, but we're either inactive or have no data. ignoring request");
@@ -128,7 +152,7 @@ public class OutLinkManager implements Observer {
                 if (isConnectHttpRequest(request)) {
                     handleConnectRequest(request, dmsg);
                 } else {
-                        new Thread(new HttpFetcher(httpRequest, dmsg, mNode, msgHandler)).start();
+                        new Thread(new HttpFetcher(httpRequest, dmsg, mNode, msgHandler, dhc)).start();
                 }
             } catch (UnsupportedEncodingException e4) {
                 // TODO Auto-generated catch block

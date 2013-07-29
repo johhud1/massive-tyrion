@@ -43,7 +43,7 @@ public class IPDiscoverMsg extends DataMsg {
             srcID = Integer.parseInt(s[1]);
             broadcastID = Integer.parseInt(s[2]);
             packetID = Integer.parseInt(s[3]);
-            numRespPackets = Integer.parseInt(s[4]);
+            areMorePackets = Boolean.parseBoolean(s[4]);
             isReq = Boolean.parseBoolean(s[5]);
             // Log.d(tag, "parsed bytes to DataMsg: "+this.toReadableString());
         } catch (NumberFormatException e) {
@@ -56,7 +56,7 @@ public class IPDiscoverMsg extends DataMsg {
     @Override
     public String toString() {
 
-        return type + ";" + srcID + ";" + broadcastID + ";" + packetID + ";" + numRespPackets + ";"
+        return type + ";" + srcID + ";" + broadcastID + ";" + packetID + ";" + areMorePackets + ";"
                + isReq;
 
     }

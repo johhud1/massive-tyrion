@@ -14,7 +14,7 @@ public class DataMsg implements MeshPduInterface {
     protected int broadcastID;
     protected int packetID;
     protected byte[] data;
-    protected int numRespPackets;
+    protected boolean areMorePackets;
 
     public DataMsg(){};
     /**
@@ -27,21 +27,21 @@ public class DataMsg implements MeshPduInterface {
      * @param broadcastId
      *            along with the source address this number uniquely identifies
      *            this route request PDU
-     * @param numRespPackets
+     * @param areMorePackets
      *          field indicating how many packets the data had to be split into
      *
      */
-    public DataMsg(int srcId, int packetID, int broadcastId, byte type, byte[] data, int numRespPackets) {
+    public DataMsg(int srcId, int packetID, int broadcastId, byte type, byte[] data, boolean areMorePackets) {
         this.srcID = srcId;
         this.packetID = packetID;
         this.type = type;
         this.broadcastID = broadcastId;
         this.data = data;
-        this.numRespPackets = numRespPackets;
+        this.areMorePackets = areMorePackets;
     }
 
     public DataMsg(int srcId, int packetID, int broadcastId, byte type, byte[] data){
-        this(srcId, packetID, broadcastId, type, data, 1);
+        this(srcId, packetID, broadcastId, type, data, false);
     }
 
 
@@ -67,7 +67,7 @@ public class DataMsg implements MeshPduInterface {
     @Override
     public String toString() {
         try {
-            return type + ";" + srcID + ";" + broadcastID + ";" + packetID + ";" + numRespPackets + ";" + new String(data, Constants.encoding);
+            return type + ";" + srcID + ";" + broadcastID + ";" + packetID + ";" + areMorePackets + ";" + new String(data, Constants.encoding);
         } catch (UnsupportedEncodingException e) {
             e.printStackTrace();
             return "error encoding string";
@@ -103,7 +103,7 @@ public class DataMsg implements MeshPduInterface {
             srcID = Integer.parseInt(s[1]);
             broadcastID = Integer.parseInt(s[2]);
             packetID = Integer.parseInt(s[3]);
-            numRespPackets = Integer.parseInt(s[4]);
+            areMorePackets = Boolean.parseBoolean(s[4]);
             data = s[5].getBytes(Constants.encoding);
             //Log.d(tag, "parsed bytes to DataMsg: "+this.toReadableString());
         } catch (NumberFormatException e) {
@@ -144,7 +144,7 @@ public class DataMsg implements MeshPduInterface {
         packetID = id;
     }
 
-    public int getNumRespPackets(){
-        return numRespPackets;
+    public boolean getAreMorePackets(){
+        return areMorePackets;
     }
 }

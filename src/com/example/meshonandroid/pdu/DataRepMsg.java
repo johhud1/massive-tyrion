@@ -8,8 +8,8 @@ import com.example.meshonandroid.Constants;
 
 public class DataRepMsg extends DataMsg {
 
-    public DataRepMsg(int srcId, int packetID, int broadcastId, byte[] data, int numRespPackets){
-        super(srcId, packetID, broadcastId, Constants.PDU_DATAREPMSG, data, numRespPackets);
+    public DataRepMsg(int srcId, int packetID, int broadcastId, byte[] data, boolean areMore){
+        super(srcId, packetID, broadcastId, Constants.PDU_DATAREPMSG, data, areMore);
     }
 
     public DataRepMsg(int srcId, int packetID, int broadcastId, byte[] data){
@@ -40,7 +40,7 @@ public class DataRepMsg extends DataMsg {
             srcID = Integer.parseInt(s[1]);
             broadcastID = Integer.parseInt(s[2]);
             packetID = Integer.parseInt(s[3]);
-            numRespPackets = Integer.parseInt(s[4]);
+            areMorePackets = Boolean.parseBoolean(s[4]);
             data = s[5].getBytes(Constants.encoding);
             //Log.d(tag, "parsed bytes to DataMsg: "+this.toReadableString());
         } catch (NumberFormatException e) {
