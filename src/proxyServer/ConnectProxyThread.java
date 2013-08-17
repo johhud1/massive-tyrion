@@ -1,26 +1,23 @@
 package proxyServer;
 
-import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.OutputStream;
 import java.io.UnsupportedEncodingException;
-import java.lang.reflect.Array;
 import java.net.Socket;
-import java.net.SocketException;
 import java.net.SocketTimeoutException;
 import java.util.Observable;
 import java.util.Observer;
-import java.util.concurrent.TimeoutException;
+
+import adhoc.aodv.Node;
+import android.os.Handler;
+import android.util.Base64;
+import android.util.Log;
 
 import com.example.meshonandroid.Constants;
+import com.example.meshonandroid.Utils;
 import com.example.meshonandroid.pdu.ConnectDataMsg;
 import com.example.meshonandroid.pdu.DataMsg;
 import com.example.meshonandroid.pdu.MeshPduInterface;
-
-import adhoc.aodv.Node;
-import android.util.Base64;
-import android.util.Log;
 
 
 
@@ -36,16 +33,26 @@ public class ConnectProxyThread extends Thread implements Observer {
     private int broadcastId;
     private int Destination;
     private Node myNode;
+    private int msgCode;
+    private Handler msgHandler;
+    private Observable mAodvObserver;
 
 
     public ConnectProxyThread(Socket s, Node n, MeshPduInterface msg, boolean isOutLink,
-                              Observable aodvObserver) {
+                              Observable aodvObserver, Handler msgHandler) {
         socket = s;
         Destination = msg.getSourceID();
         broadcastId = msg.getBroadcastID();
         myNode = n;
         isReq = !isOutLink;
         aodvObserver.addObserver(this);
+        mAodvObserver = aodvObserver;
+        if(isReq){
+            msgCode = Constants.TF_MSG_CODE;
+        } else {
+            msgCode = Constants.FT_MSG_CODE;
+        }
+        this.msgHandler = msgHandler;
     }
 
 
@@ -86,9 +93,11 @@ public class ConnectProxyThread extends Thread implements Observer {
                 Log.d(tag,
                       "connection appears to have been terminated. Sending emtpy ConnectDataMsg to: "
                           + Destination);
+                mAodvObserver.deleteObserver(this);
                 sendSocketCloseMsg(myNode, Destination, isReq);
             }
         } catch (IOException e) {
+            mAodvObserver.deleteObserver(this);
             sendSocketCloseMsg(myNode, Destination, isReq);
             e.printStackTrace();
         }
@@ -96,14 +105,12 @@ public class ConnectProxyThread extends Thread implements Observer {
     }
 
     private void sendSocketCloseMsg(Node myNode, int broadcastId, boolean isReq){
-
         ConnectDataMsg cdm =
             new ConnectDataMsg(myNode.getNodeAddress(), 0, broadcastId, new byte[0], isReq,
                                true);
         try {
             myNode.sendData(0, Destination, cdm.toBytes());
         } catch (UnsupportedEncodingException e) {
-            // TODO Auto-generated catch block
             e.printStackTrace();
         }
     }
@@ -112,6 +119,7 @@ public class ConnectProxyThread extends Thread implements Observer {
         String tag = "ConnectProxyInfo";// "ConnectProxyThread:sendData";
         byte[] sendData = new byte[length];
         System.arraycopy(data, 0, sendData, 0, sendData.length);
+        Utils.sendTrafficMsg(msgHandler, length, msgCode);
         ConnectDataMsg cdm =
             new ConnectDataMsg(myNode.getNodeAddress(), 0, broadcastId, Base64.encode(sendData, 0),
                                isReq, false);
@@ -124,7 +132,7 @@ public class ConnectProxyThread extends Thread implements Observer {
 
     @Override
     public void update(Observable arg0, Object data) {
-        String tag = "ConnectProxyInfo"; // "ConnectProxyThread:update";
+        String tag = "ConnectProxyInfo";
         MeshPduInterface msg = (MeshPduInterface) data;
         DataMsg dmsg;
         if (broadcastId == (msg.getBroadcastID())) {
@@ -133,26 +141,31 @@ public class ConnectProxyThread extends Thread implements Observer {
             case Constants.PDU_CONNECTDATAMSG:
                 ConnectDataMsg cdm = (ConnectDataMsg) msg;
                 Log.d(tag, "got a connect data msg: " + cdm.toReadableString());
-                if (!cdm.isReq() && cdm.isConnectionSetupMsg() && cdm.getDataBytes().length == 0) {
+                if (cdm.isConnectionSetupMsg() && cdm.getDataBytes().length == 0) {
                     // empty connection setup message. means the connection was
                     // closed. so close out our socket.
                     try {
                         Log.d("ConnectProxy", "GOT EMPTY ConnectDataMsg; closing our socket");
                         socket.close();
+                        //TODO: should we remove this from aodvobserver ??
+                        mAodvObserver.deleteObserver(this);
                     } catch (IOException e) {
-                        // TODO Auto-generated catch block
                         e.printStackTrace();
                     }
                 }
-                if(cdm.isReq() && !cdm.isConnectionSetupMsg()){
+                if(!cdm.isConnectionSetupMsg()){
                     //got CONNECT tcp data, extract from msg, decode and forward it to the target host
                     byte[] d = Base64.decode(cdm.getDataBytes(), 0);
                     try {
+                        if(isReq){
+                            Utils.sendTrafficMsg(msgHandler, d.length, Constants.TF_MSG_CODE);
+                        } else {
+                            Utils.sendTrafficMsg(msgHandler, d.length, Constants.FT_MSG_CODE);
+                        }
                         String dAsString = new String(d, Constants.encoding);
                         Log.d(tag, "writing Connect Data out to target host("+socket.getInetAddress().getHostAddress()+": "+dAsString+")");
                         socket.getOutputStream().write(d);
                     } catch (IOException e) {
-                        // TODO Auto-generated catch block
                         e.printStackTrace();
                     }
                 }
@@ -160,7 +173,6 @@ public class ConnectProxyThread extends Thread implements Observer {
             default:
                 Log.d(tag, "default case");
             }
-            // TODO Auto-generated method stub
 
         }
     }

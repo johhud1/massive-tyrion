@@ -1,17 +1,12 @@
 package com.example.meshonandroid;
 
-import java.io.BufferedInputStream;
-import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.net.Socket;
-import java.net.URI;
 import java.net.UnknownHostException;
-import java.util.Arrays;
 import java.util.Observable;
 import java.util.Observer;
 
-import proxyServer.ApacheRequestFactory;
 import proxyServer.ConnectProxyThread;
 import adhoc.aodv.Node;
 import android.annotation.TargetApi;
@@ -20,15 +15,12 @@ import android.net.ConnectivityManager;
 import android.net.NetworkInfo;
 import android.os.Build;
 import android.os.Handler;
-import android.os.Message;
 import android.util.Base64;
 import android.util.Log;
 import android.util.SparseIntArray;
-
 import ch.boye.httpclientandroidlib.HttpRequest;
 import ch.boye.httpclientandroidlib.HttpResponse;
 import ch.boye.httpclientandroidlib.ProtocolException;
-import ch.boye.httpclientandroidlib.client.RedirectHandler;
 import ch.boye.httpclientandroidlib.client.RedirectStrategy;
 import ch.boye.httpclientandroidlib.client.methods.HttpUriRequest;
 import ch.boye.httpclientandroidlib.impl.client.DefaultHttpClient;
@@ -37,7 +29,6 @@ import ch.boye.httpclientandroidlib.protocol.HttpContext;
 
 import com.example.meshonandroid.pdu.ConnectDataMsg;
 import com.example.meshonandroid.pdu.DataMsg;
-import com.example.meshonandroid.pdu.DataRepMsg;
 import com.example.meshonandroid.pdu.ExitNodeRepPDU;
 import com.example.meshonandroid.pdu.MeshPduInterface;
 
@@ -82,7 +73,6 @@ public class OutLinkManager implements Observer {
             public boolean
                 isRedirected(HttpRequest arg0, HttpResponse arg1, HttpContext arg2)
                                                                                    throws ProtocolException {
-                // TODO Auto-generated method stub
                 return false;
             }
 
@@ -90,7 +80,6 @@ public class OutLinkManager implements Observer {
             @Override
             public HttpUriRequest
                 getRedirect(HttpRequest arg0, HttpResponse arg1, HttpContext arg2) throws ProtocolException {
-                // TODO Auto-generated method stub
                 return null;
             }
         });
@@ -132,7 +121,6 @@ public class OutLinkManager implements Observer {
         try {
             Log.d(tag, "got update. msg: " + msg.toReadableString());
         } catch (UnsupportedEncodingException e3) {
-            // TODO Auto-generated catch block
             e3.printStackTrace();
         }
         switch (msg.getPduType()) {
@@ -155,7 +143,6 @@ public class OutLinkManager implements Observer {
                         new Thread(new HttpFetcher(httpRequest, dmsg, mNode, msgHandler, dhc)).start();
                 }
             } catch (UnsupportedEncodingException e4) {
-                // TODO Auto-generated catch block
                 e4.printStackTrace();
             }
             break;
@@ -181,20 +168,18 @@ public class OutLinkManager implements Observer {
         byte[] responseBuf = new byte[BUFSIZE];
         try {
             Socket targetConn = new Socket(addrPort[0], Integer.parseInt(addrPort[1]));
-            new ConnectProxyThread(targetConn, mNode, dmsg, true, mAodvObserver).start();
+            new ConnectProxyThread(targetConn, mNode, dmsg, true, mAodvObserver, msgHandler).start();
             // BufferedInputStream bis = new
             // BufferedInputStream(mConnectSocket.getInputStream());
             ConnectDataMsg resp = makeHttpConnectResponse(dmsg.getBroadcastID());
             mNode.sendData(dmsg.getPacketID(), dmsg.getSourceID(), resp.toBytes());
         } catch (UnknownHostException e) {
-            // TODO Auto-generated catch block
             e.printStackTrace();
         } catch (IOException e) {
             Log.e(tag, "error creating CONNECT connection to target host:" + addrPort[0] + ":"
                        + addrPort[1]);
             e.printStackTrace();
         }
-        // TODO: make a tcp connection to whatever the request says it should
 
     }
 
@@ -212,9 +197,6 @@ public class OutLinkManager implements Observer {
     private String[] getAddrPort(String[] httpRequest) {
         return httpRequest[1].split(":");
     }
-
-
-
 
     // THIS IS THE WORST THING I'VE EVER DONE. and there's more in AODVObservers
     // constructor. this madness should really be contained.

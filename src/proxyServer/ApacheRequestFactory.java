@@ -45,6 +45,10 @@ public class ApacheRequestFactory {
                                   new BasicLineParser(new ProtocolVersion("HTTP", 1, 1)),
                                   new DefaultHttpRequestFactory(), new BasicHttpParams());
         HttpMessage message = parser.parse();
+        if(message.containsHeader("Content-Length")){
+            //content length is set by request.setEntity
+            message.removeHeaders("Content-Length");
+        }
         if (message instanceof BasicHttpEntityEnclosingRequest) {
             BasicHttpEntityEnclosingRequest request = (BasicHttpEntityEnclosingRequest) message;
             EntityDeserializer entityDeserializer =

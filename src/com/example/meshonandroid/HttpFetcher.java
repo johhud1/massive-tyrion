@@ -1,21 +1,16 @@
 package com.example.meshonandroid;
 
-import java.io.BufferedInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.UnsupportedEncodingException;
-import java.net.URI;
-import java.net.URISyntaxException;
 import java.util.Arrays;
-import java.util.zip.GZIPInputStream;
 
 import proxyServer.ApacheRequestFactory;
 import adhoc.aodv.Node;
 import android.os.Handler;
 import android.util.Base64;
 import android.util.Log;
-
 import ch.boye.httpclientandroidlib.Header;
 import ch.boye.httpclientandroidlib.HttpException;
 import ch.boye.httpclientandroidlib.HttpHost;
@@ -86,7 +81,7 @@ public class HttpFetcher implements Runnable {
             out.write(("\r\n").getBytes(Constants.encoding));
             bufLength += out.size();
             // handle response content, if any
-            if (myresp.getEntity() != null) {// && bufLength != out.size()) {
+            if (myresp.getEntity() != null) {
                 // if entity isn't null, and there's more than just headers to
                 // transfer
                 InputStream respStream = myresp.getEntity().getContent();
@@ -195,8 +190,12 @@ public class HttpFetcher implements Runnable {
     private void
         sendBuffer(byte[] responseBuf, int limit, int pid) throws UnsupportedEncodingException {
         String tag = "HttpFetcher:sendBuffer";
+        if(limit == 0){
+            //limits zero, 0 byte buffer. do nothing
+            return;
+        }
         Log.d(tag, "sending packet("+pid+") off; size: "+limit/1000+"KB");
-        Utils.sendForwardedTrafficMsg(mainActivityMsgHandler, limit);
+        Utils.sendTrafficMsg(mainActivityMsgHandler, limit, Constants.FT_MSG_CODE);
         if (limit == responseBuf.length) {
             DataMsg respData =
                 new DataRepMsg(mContactId, pid, dmsg.getBroadcastID(),
@@ -215,7 +214,7 @@ public class HttpFetcher implements Runnable {
 
     private void sendFailureMsg(int pid, Exception e) {
         try {
-            mNode.sendData(pid, dmsg.getSourceID(), makeFailureDataRepMsg(e.getMessage())
+            mNode.sendData(pid, dmsg.getSourceID(), makeFailureDataRepMsg(e.getLocalizedMessage())
                 .toBytes());
         } catch (UnsupportedEncodingException e1) {
             // TODO Auto-generated catch block
@@ -225,6 +224,9 @@ public class HttpFetcher implements Runnable {
 
 
     private DataRepMsg makeFailureDataRepMsg(String msg) {
+        if(msg == null){
+            msg = "error: no detail msg provided";
+        }
         try {
             return new DataRepMsg(mContactId, dmsg.getPacketID(), dmsg.getBroadcastID(),
                                   Base64.encode(msg.getBytes(Constants.encoding), 0), false);

@@ -61,7 +61,7 @@ public class NetworkInfoActivity extends Activity implements HandlerActivity {
         StrictMode.ThreadPolicy policy = new StrictMode.ThreadPolicy.Builder().permitAll().build();
         StrictMode.setThreadPolicy(policy);
         super.onCreate(savedInstanceState);
-        adhoc.etc.Debug.setDebugStream(System.out);
+        //adhoc.etc.Debug.setDebugStream(System.out);
 
         try {
             myNode = initializeStartNode();
@@ -110,7 +110,7 @@ public class NetworkInfoActivity extends Activity implements HandlerActivity {
 
         mWV.setWebViewClient(new myWebViewClient());
         Button loadPageBut = (Button) findViewById(R.id.load_page_but);
-        loadPageBut.setOnClickListener(new urlReqOnClickListener("http://www.reddit.com")); // SET
+        loadPageBut.setOnClickListener(new urlReqOnClickListener("https://www.gmail.com")); // SET
                                                                                             // IP:port
                                                                                             // for
                                                                                             // server
@@ -133,19 +133,13 @@ public class NetworkInfoActivity extends Activity implements HandlerActivity {
             if (checked) {
                 // start proxy and mesh service
                 new Thread(new Runnable() {
-                    /*
-                     * (non-Javadoc)
-                     *
-                     * @see java.lang.Runnable#run()
-                     */
                     @Override
                     public void run() {
                         Message m = new Message();
                         m.arg1 = Constants.STATUS_MSG_CODE;
                         Bundle b = new Bundle();
                         try {
-                            // Random r = new Random();
-                            int rId = mFreeIPManager.getFreeID();// r.nextInt(MAX_NODES);
+                            int rId = mFreeIPManager.getFreeID();
                             myNode.stopThread();
                             myNode.unBind();
                             String cmd = "source /data/mybin/init.sh " + rId;
@@ -153,7 +147,6 @@ public class NetworkInfoActivity extends Activity implements HandlerActivity {
                                        + ". Cmd string: " + cmd);
                             RunAsRoot(new String[] { cmd });//
                             int myContactID = getMyID();
-                            // myNode.setAddress(myContactID);
                             myNode = new Node(myContactID);
                             myNode.startThread();
                             mFreeIPManager.setNode(myNode);
@@ -168,17 +161,7 @@ public class NetworkInfoActivity extends Activity implements HandlerActivity {
                             m.setData(b);
                             mThis.getHandler().sendMessage(m);
 
-                        } /*
-                           * catch (BindException e) { e.printStackTrace(); }
-                           * catch (InvalidNodeAddressException e) {
-                           * e.printStackTrace(); } catch (SocketException e) {
-                           * setStatusField(
-                           * "failure binding to address. Try force stopping application, and retrying"
-                           * ); e.printStackTrace(); } catch
-                           * (UnknownHostException e) { e.printStackTrace(); }
-                           * catch (IOException e) { // TODO Auto-generated
-                           * catch block e.printStackTrace(); }
-                           */catch (Exception e) {
+                        } catch (Exception e) {
                             b.putString("msg", "error starting mesh service");
                             m.setData(b);
                             mThis.getHandler().sendMessage(m);
@@ -243,7 +226,6 @@ public class NetworkInfoActivity extends Activity implements HandlerActivity {
         try {
             Thread.sleep(1600);// wait a bit so the script has time to run
         } catch (InterruptedException e) {
-            // TODO Auto-generated catch block
             e.printStackTrace();
         }
     }
@@ -269,7 +251,6 @@ public class NetworkInfoActivity extends Activity implements HandlerActivity {
 
     private class urlReqOnClickListener implements OnClickListener {
         private String mUrl;
-
 
         public urlReqOnClickListener(String url) {
             super();

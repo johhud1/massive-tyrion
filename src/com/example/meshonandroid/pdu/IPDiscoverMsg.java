@@ -1,7 +1,5 @@
 package com.example.meshonandroid.pdu;
 
-import java.io.UnsupportedEncodingException;
-
 import adhoc.aodv.exception.BadPduFormatException;
 
 import com.example.meshonandroid.Constants;

@@ -52,7 +52,6 @@ public class FreeIPManager implements Observer {
                                new IPDiscoverMsg(mNode.getNodeAddress(), 0, 0, true).toBytes());
                 updatedLast = new Date();
             } catch (UnsupportedEncodingException e) {
-                // TODO Auto-generated catch block
                 e.printStackTrace();
             }
         }
@@ -89,7 +88,6 @@ public class FreeIPManager implements Observer {
         try {
             Log.d(tag, "got msg: " + meshMsg.toReadableString());
         } catch (UnsupportedEncodingException e1) {
-            // TODO Auto-generated catch block
             e1.printStackTrace();
         }
         switch (meshMsg.getPduType()) {

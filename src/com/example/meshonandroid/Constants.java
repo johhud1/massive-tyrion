@@ -28,6 +28,8 @@ public class Constants {
     public static final int TF_MSG_CODE = 2;
     public static final int FT_MSG_CODE = 3;
 
+    public static final int CONTACT_STALENESSTIME = -1;
+
 
     public static int MAX_PAYLOAD_SIZE = adhoc.aodv.Constants.MAX_PACKAGE_SIZE - (4 * 1000); // 8
                                                                                               // ints

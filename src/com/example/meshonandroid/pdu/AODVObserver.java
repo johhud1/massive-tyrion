@@ -1,24 +1,19 @@
 package com.example.meshonandroid.pdu;
 
-import java.io.UnsupportedEncodingException;
 import java.util.Observable;
 import java.util.Observer;
 
-import com.example.meshonandroid.Constants;
-import com.example.meshonandroid.HandlerActivity;
-import com.example.meshonandroid.MainPrefActivity;
-import com.example.meshonandroid.OutLinkManager;
-import com.example.meshonandroid.Utils;
-
 import adhoc.aodv.Node;
-import adhoc.aodv.ObserverConst;
 import adhoc.aodv.Node.MessageToObserver;
 import adhoc.aodv.Node.PacketToObserver;
+import adhoc.aodv.ObserverConst;
 import adhoc.aodv.exception.BadPduFormatException;
-import android.content.Context;
-import android.os.Bundle;
-import android.os.Message;
 import android.util.Log;
+
+import com.example.meshonandroid.Constants;
+import com.example.meshonandroid.HandlerActivity;
+import com.example.meshonandroid.OutLinkManager;
+import com.example.meshonandroid.Utils;
 
 
 

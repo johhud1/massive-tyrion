@@ -2,10 +2,9 @@ package com.example.meshonandroid.pdu;
 
 import java.io.UnsupportedEncodingException;
 
-import com.example.meshonandroid.Constants;
-
 import adhoc.aodv.exception.BadPduFormatException;
-import android.util.Log;
+
+import com.example.meshonandroid.Constants;
 
 public class DataMsg implements MeshPduInterface {
 
