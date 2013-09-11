@@ -64,7 +64,8 @@ public class AODVObserver extends Observable implements Observer {
             break;
         }
     }
-
+    //TODO: refactor this whole thing so I'm not using observers, and just call the methods on the appropriate objects
+            //can keep a list of ProxyThreads perhaps, indexed by requestId for quick dispatch
     private void parseMessage(int senderID, byte[] data){
         String tag = "AODVObserver:parseMessage";
         setChanged();
@@ -76,14 +77,14 @@ public class AODVObserver extends Observable implements Observer {
                 DataMsg dataReqMsg = new DataReqMsg();
                 dataReqMsg.parseBytes(data);
                 System.out.println("Received DataReqMsg: "+dataReqMsg.toReadableString());
-                setMainTextViewWithString("Recieved DataReqMsg");
+                setMainTextViewWithString("Recieved DataReqMsg. srcID:"+dataReqMsg.srcID + " bId: "+dataReqMsg.getBroadcastID());
                 notifyObservers(dataReqMsg);
                 //notifyObservers("recieved PDU_DATAMSG: "+dataMsg.toReadableString());
                 break;
             case Constants.PDU_DATAREPMSG:
                 DataMsg dataRepMsg = new DataRepMsg();
                 dataRepMsg.parseBytes(data);
-                setMainTextViewWithString("Recieved DataRepMsg. srcID:"+dataRepMsg.srcID);
+                setMainTextViewWithString("Recieved DataRepMsg. srcID:"+dataRepMsg.srcID + " bId: "+dataRepMsg.getBroadcastID());
                 System.out.println("Received DataRepMsg: "+dataRepMsg.toReadableString());
                 notifyObservers(dataRepMsg);
                 //notifyObservers("recieved PDU_DATAMSG: "+dataMsg.toReadableString());
@@ -108,9 +109,9 @@ public class AODVObserver extends Observable implements Observer {
                 break;
             case Constants.PDU_EXITNODEREP:
                 System.out.println("Received: PDU Exit Node Reply msg");
-                setMainTextViewWithString("Recieved ExitNodeRep");
                 ExitNodeRepPDU exitRep = new ExitNodeRepPDU();
                 exitRep.parseBytes(data);
+                setMainTextViewWithString("Recieved ExitNodeRep. SrcId: "+exitRep.getSourceID()+ " bId: "+ exitRep.getBroadcastID());
                 Log.d(tag, exitRep.toReadableString());
                 notifyObservers(exitRep);
                 break;
@@ -128,6 +129,14 @@ public class AODVObserver extends Observable implements Observer {
                 cMsg.parseBytes(data);
                 Log.d(tag, cMsg.toReadableString());
                 notifyObservers(cMsg);
+                break;
+            case Constants.PDU_CONNECTIONCLOSEMSG:
+                System.out.println("Recieved: ConnectionClosed msg");
+                setMainTextViewWithString("Recieved ConnectionClosedMsg");
+                ConnectionClosedMsg CCMsg = new ConnectionClosedMsg();
+                CCMsg.parseBytes(data);
+                Log.d(tag, CCMsg.toReadableString());
+                notifyObservers(CCMsg);
                 break;
             default:
                 break;

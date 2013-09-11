@@ -43,20 +43,6 @@ public class DataMsg implements MeshPduInterface {
         this(srcId, packetID, broadcastId, type, data, false);
     }
 
-
-    /*
-     * public int getBroadcastId(){ return broadcastID; }
-     *
-     * public int getSourceSequenceNumber(){ return srcSeqNum; }
-     *
-     * public void setDestSeqNum(int destinationSequenceNumber){ destSeqNum =
-     * destinationSequenceNumber; }
-     *
-     * public int getHopCount(){ return hopCount; }
-     *
-     * public void incrementHopCount(){ hopCount++; }
-     */
-
     public String toReadableString(){
         return "type:" + type + "; srcID:" + srcID + "; broadcastID:" + broadcastID + "; packetID:"
                + packetID;// + "; data:"+new String(data, Constants.encoding);

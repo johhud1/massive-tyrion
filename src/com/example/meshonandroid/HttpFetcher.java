@@ -33,6 +33,7 @@ public class HttpFetcher implements Runnable {
     int BUFSIZE = 512;
     private HttpClient dhc;
     DataMsg dmsg;
+    volatile boolean connectionOpen = true;
 
 
     public HttpFetcher(String hr, DataMsg msg, Node n, Handler h, HttpClient dhc) {
@@ -90,39 +91,26 @@ public class HttpFetcher implements Runnable {
 
                 int redd = 0;
                 int offset = out.size();
-                int packs = (bufLength / (MAX_PAYLOAD_SIZE - 15000)) + 1;
+                int packs = (bufLength / (MAX_PAYLOAD_SIZE - 15000)) + 1; //number of packets we're gonna send
                 // this arbitrary 15k buffer is because base64 increases size.
-                // should fix this in a better way
-                // ie, don't have a numPacks field, but rather a
-                // 'areMorePackets' field in each dataRep, and pid indicates
-                // ordering.
 
                 if (contLength > 0) {
                     // stream http response content when size is known
                     byte[] responseBuf =
                         Arrays.copyOf(out.toByteArray(),
                                       Math.min(MAX_PAYLOAD_SIZE - 15000, bufLength));
-                    while ((redd =
-                        respStream.read(responseBuf, offset, responseBuf.length - offset)) != -1) {
+                    redd = respStream.read(responseBuf, offset, responseBuf.length - offset);
+                    while ((redd != -1) && connectionOpen) {
                         if (redd + offset >= responseBuf.length) {
-                            /*
-                            DataMsg respData =
-                                new DataRepMsg(mContactId, pid, dmsg.getBroadcastID(),
-                                               Base64.encode(responseBuf, 0), true);
-                            byte[] msgBytes = respData.toBytes();
-                            mNode.sendData(pid, dmsg.getSourceID(), msgBytes);*/
                             sendBuffer(responseBuf, responseBuf.length, pid);
                             pid++;
                             offset = 0;
                         } else {
                             offset += redd;
                         }
+                        redd = respStream.read(responseBuf, offset, responseBuf.length - offset);
                     }
                     // send remaining data;
-                    /*DataMsg respData =
-                        new DataRepMsg(mContactId, pid, dmsg.getBroadcastID(), Base64.encode(Arrays
-                            .copyOf(responseBuf, offset), 0), false);
-                    mNode.sendData(pid, dmsg.getSourceID(), respData.toBytes());*/
                     sendBuffer(responseBuf, offset, pid);
                 } else if (contLength == -1) {
                     // stream response data when we don't know the final length
@@ -130,14 +118,6 @@ public class HttpFetcher implements Runnable {
                     byte[] tempBuf = new byte[BUFSIZE];
                     while ((redd = respStream.read(tempBuf, 0, BUFSIZE)) > 0) {
                         if (redd + offset >= responseBuf.length) {
-                            /*
-                             * DataMsg respData = new DataRepMsg(mContactId,
-                             * pid, dmsg.getBroadcastID(),
-                             * Base64.encode(responseBuf, 0), true); byte[]
-                             * msgBytes = respData.toBytes();
-                             * mNode.sendData(pid, dmsg.getSourceID(),
-                             * msgBytes);
-                             */
                             sendBuffer(responseBuf, responseBuf.length, pid);
                             pid++;
                             offset = 0;
@@ -148,19 +128,10 @@ public class HttpFetcher implements Runnable {
                         offset += redd;
                     }
                     // send remaining data
-                    /*DataMsg respData =
-                        new DataRepMsg(mContactId, pid, dmsg.getBroadcastID(), Base64.encode(Arrays
-                            .copyOf(responseBuf, offset), 0), false);
-                    mNode.sendData(pid, dmsg.getSourceID(), respData.toBytes());*/
                     sendBuffer(responseBuf, offset, pid);
                 } else {
                     // send contentless response (headers only)
                     byte[] responseBuf = Arrays.copyOf(out.toByteArray(), bufLength);
-                    /*DataMsg respData =
-                        new DataRepMsg(mContactId, pid, dmsg.getBroadcastID(),
-                                       Base64.encode(responseBuf, 0), false);
-                    byte[] msgBytes = respData.toBytes();
-                    mNode.sendData(pid, dmsg.getSourceID(), msgBytes);*/
                     sendBuffer(responseBuf, responseBuf.length, pid);
                 }
                 respStream.close();
@@ -195,7 +166,7 @@ public class HttpFetcher implements Runnable {
             return;
         }
         Log.d(tag, "sending packet("+pid+") off; size: "+limit/1000+"KB");
-        Utils.sendTrafficMsg(mainActivityMsgHandler, limit, Constants.FT_MSG_CODE);
+        Utils.sendTrafficMsg(mainActivityMsgHandler, limit, Constants.TFM_MSG_CODE);
         if (limit == responseBuf.length) {
             DataMsg respData =
                 new DataRepMsg(mContactId, pid, dmsg.getBroadcastID(),

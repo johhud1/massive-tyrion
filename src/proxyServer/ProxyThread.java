@@ -6,19 +6,25 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.UnsupportedEncodingException;
 import java.net.Socket;
+import java.net.SocketException;
 import java.util.Observable;
 import java.util.Observer;
 import java.util.StringTokenizer;
 
+import Logging.LoggingDBUtils;
+import Logging.PerfDBHelper;
 import adhoc.aodv.Node;
+import android.content.Context;
 import android.os.Handler;
 import android.os.Message;
 import android.util.Base64;
 import android.util.Log;
 
 import com.example.meshonandroid.Constants;
+import com.example.meshonandroid.Utils;
 import com.example.meshonandroid.pdu.AODVObserver;
 import com.example.meshonandroid.pdu.ConnectDataMsg;
+import com.example.meshonandroid.pdu.ConnectionClosedMsg;
 import com.example.meshonandroid.pdu.DataMsg;
 import com.example.meshonandroid.pdu.DataRepMsg;
 import com.example.meshonandroid.pdu.DataReqMsg;
@@ -40,30 +46,34 @@ public class ProxyThread extends Thread implements Observer {
     private BufferedReader in;
     private String httpRequest;
     private AODVObserver mAodvObs;
-    private int broadcastId;
-    private int contactID;
+    private int broadcastId; //id number of this request, used to identify resp msgs from other responses to requests on this phone
+    private int destinationID;   //id of node in mesh that will be doing the data transfer for us
     private int recievedPackets = 0;
-    private Handler msgHandler;
+    private Handler msgHandler; //main activity handler (used for sending text msgs to main thread)
     private ConnectProxyThread mConnectProxyThread;
-
+    private long dbId; //id number of this request in db
+    private int cSize = 0;
+    private Context mContext;
 
     public ProxyThread(Socket socket, Node node, AODVObserver aodvObs, int reqNumber,
-                       Handler msgHandler) {
+                       Handler msgHandler, long id, Context c) {
         super("ProxyThread");
         this.socket = socket;
         this.node = node;
         aodvObs.addObserver(this);
         mAodvObs = aodvObs;
+        dbId = id;
         this.msgHandler = msgHandler;
         this.broadcastId = reqNumber;
         packetBuf = new DataRepMsg[WINDOW_SIZE];
+        mContext = c;
     }
 
 
     public ProxyThread(Socket accept, Node node2, AODVObserver aodvobs, int reqNumber2,
-                       int getContact, Handler h) {
-        this(accept, node2, aodvobs, reqNumber2, h);
-        contactID = getContact;
+                       int getContact, Handler h, long id, Context c) {
+        this(accept, node2, aodvobs, reqNumber2, h, id, c);
+        destinationID = getContact;
     }
 
 
@@ -80,7 +90,6 @@ public class ProxyThread extends Thread implements Observer {
             // /////////////////////////////////
             // begin get request from client
             while ((inputLine = in.readLine()) != null) {
-                // try {
                 httpRequest += inputLine + "\n";
                 if(cnt == 0){
                     Log.d(tag, "request: "+httpRequest);
@@ -90,21 +99,6 @@ public class ProxyThread extends Thread implements Observer {
                     break;
                 }
                 cnt++;
-                // //////////////////////////////BEGIN useless debugging
-                // stuff that can be removed
-                /*
-                 * StringTokenizer tok = new StringTokenizer(inputLine);
-                 * tok.nextToken(); } catch (Exception e) { break; }
-                 */
-                // parse the first line of the request to find the url
-                    /*
-                     * String[] tokens = inputLine.split(" "); urlToCall =
-                     * tokens[1]; // can redirect this to output log
-                     * System.out.println("Request for : " + urlToCall);
-                     */
-
-                // ////////////////////////////////END USELESS debugging stuff
-                // that can be removed
 
             }
             // end get request from client
@@ -115,7 +109,7 @@ public class ProxyThread extends Thread implements Observer {
                 DataMsg dreq =
                     new DataReqMsg(node.getNodeAddress(), 0, broadcastId, Base64.encode(httpRequest
                         .getBytes(Constants.encoding), 0));
-                node.sendData(0, contactID, dreq.toBytes());
+                node.sendData(0, destinationID, dreq.toBytes());
             } catch (UnsupportedEncodingException e) {
                 e.printStackTrace();
             }
@@ -152,49 +146,32 @@ public class ProxyThread extends Thread implements Observer {
                 try {
                     if (recievedPackets == dmsg.getPacketID()) {
                         byte[] outArray = Base64.decode(dmsg.getDataBytes(), 0);
-                        sendTrafficForwardedMsg(outArray.length);
-                        String respMsg = new String(outArray, Constants.encoding);
-                        out.write(outArray);
-                        out.flush();
-                        if (socket != null && !dmsg.getAreMorePackets()) {
-                            // done. close out the socket, and remove this
-                            // as an
-                            // aodv
-                            // observer
-                            mAodvObs.deleteObserver(this);
-                            socket.close();
-                        }
-                        recievedPackets++;
+                        handleOutArray(outArray, dmsg);
                     } else {
                         // we got a packet out of order, write out anything that
                         // we can
                         // ie anything after index recievedPackets
+                        Log.e(ProxyThread.class.getName(), "packet recieved out of order. very untested code; check everythings working properly");
                         int index = recievedPackets % WINDOW_SIZE;
                         while (packetBuf[index] != null
                                && isMoreRecent(packetBuf[(recievedPackets + 1) % WINDOW_SIZE],
                                                packetBuf[index])) {
                             byte[] outArray = Base64.decode(packetBuf[index].getDataBytes(), 0);
-                            sendTrafficForwardedMsg(outArray.length);
-                            // byte[] response = Base64.decode(outArray, 0);
-                            String respMsg = new String(outArray, Constants.encoding);
-                            out.write(outArray);
-                            out.flush();
-                            if (socket != null && !dmsg.getAreMorePackets()) {
-                                // done. close out the socket, and remove this
-                                // as an
-                                // aodv
-                                // observer
-                                mAodvObs.deleteObserver(this);
-                                socket.close();
-                            }
-                            recievedPackets++;
+                            handleOutArray(outArray, dmsg);
+                            //sendTrafficForwardedMsg(outArray.length);
+                            //Utils.sendTrafficMsg(msgHandler, outArray.length, Constants.TF_MSG_CODE);
                             index = recievedPackets % WINDOW_SIZE;
                         }
 
                     }
                 } catch (Exception e) {
-                    e.printStackTrace();
+                    //local browser may have closed connection because stream's no longer used
+                    //or something worse may have happened. In either case send a connectionKill message to the appropriate node
+                    Log.e(ProxyThread.class.getName(), "exception " + e);
                     mAodvObs.deleteObserver(this);
+                    node.sendData(0, destinationID, new ConnectionClosedMsg(node.getNodeAddress(), 0, broadcastId).toBytes());
+                    //we're not gonna get a 'last packet' in this case, so just set the contentsize and endtime now
+                    LoggingDBUtils.setRequestEndTimeAndContentSize(dbId, System.currentTimeMillis(), cSize);
                 }
 
                 break;
@@ -239,21 +216,28 @@ public class ProxyThread extends Thread implements Observer {
              */
         }
     }
+    private void handleOutArray(byte[] outArray, DataRepMsg dmsg) throws IOException{
+        //sendTrafficForwardedMsg(outArray.length);
+        Utils.sendTrafficMsg(msgHandler, outArray.length, Constants.TTM_MSG_CODE);
+        cSize += outArray.length;
+        String respMsg = new String(outArray, Constants.encoding);
+        out.write(outArray);
+        out.flush();
+        if (socket != null && !dmsg.getAreMorePackets()) {
+            // done. close out the socket, and remove this
+            // as an
+            // aodv
+            // observer
+            mAodvObs.deleteObserver(this);
+            LoggingDBUtils.setRequestEndTimeAndContentSize(dbId, System.currentTimeMillis(), cSize);
+            socket.close();
+        }
+        recievedPackets++;
+    }
 
 
     private boolean isMoreRecent(DataRepMsg first, DataRepMsg other) {
         return (first.getPacketID() > other.getPacketID());
-    }
-
-
-    // traffic forwarded through the mesh on our behalf
-    // TODO: refactor, replace all occurances of this with Utils.sendMsg method
-    private void sendTrafficForwardedMsg(int length) {
-        Message m = new Message();
-        m.arg1 = Constants.TF_MSG_CODE;
-        m.arg2 = length;
-        msgHandler.sendMessage(m);
-
     }
 
 

@@ -29,7 +29,7 @@ public class ConnectProxyThread extends Thread implements Observer {
 
     private Socket socket;
     private boolean listening = true;
-    private boolean isReq;
+    private boolean isRequesterSide;
     private int broadcastId;
     private int Destination;
     private Node myNode;
@@ -44,13 +44,13 @@ public class ConnectProxyThread extends Thread implements Observer {
         Destination = msg.getSourceID();
         broadcastId = msg.getBroadcastID();
         myNode = n;
-        isReq = !isOutLink;
+        isRequesterSide = !isOutLink;
         aodvObserver.addObserver(this);
         mAodvObserver = aodvObserver;
-        if(isReq){
-            msgCode = Constants.TF_MSG_CODE;
+        if(isRequesterSide){
+            msgCode = Constants.TTM_MSG_CODE;
         } else {
-            msgCode = Constants.FT_MSG_CODE;
+            msgCode = Constants.TFM_MSG_CODE;
         }
         this.msgHandler = msgHandler;
     }
@@ -94,11 +94,11 @@ public class ConnectProxyThread extends Thread implements Observer {
                       "connection appears to have been terminated. Sending emtpy ConnectDataMsg to: "
                           + Destination);
                 mAodvObserver.deleteObserver(this);
-                sendSocketCloseMsg(myNode, Destination, isReq);
+                sendSocketCloseMsg(myNode, Destination, isRequesterSide);
             }
         } catch (IOException e) {
             mAodvObserver.deleteObserver(this);
-            sendSocketCloseMsg(myNode, Destination, isReq);
+            sendSocketCloseMsg(myNode, Destination, isRequesterSide);
             e.printStackTrace();
         }
 
@@ -122,7 +122,7 @@ public class ConnectProxyThread extends Thread implements Observer {
         Utils.sendTrafficMsg(msgHandler, length, msgCode);
         ConnectDataMsg cdm =
             new ConnectDataMsg(myNode.getNodeAddress(), 0, broadcastId, Base64.encode(sendData, 0),
-                               isReq, false);
+                               isRequesterSide, false);
         String msg = new String(sendData, Constants.encoding);
         Log.d(tag, "got data from our connection (" + sendData.length
                    + " bytes), sending ConnectDataMsg to: " + Destination);
@@ -157,10 +157,10 @@ public class ConnectProxyThread extends Thread implements Observer {
                     //got CONNECT tcp data, extract from msg, decode and forward it to the target host
                     byte[] d = Base64.decode(cdm.getDataBytes(), 0);
                     try {
-                        if(isReq){
-                            Utils.sendTrafficMsg(msgHandler, d.length, Constants.TF_MSG_CODE);
+                        if(isRequesterSide){
+                            Utils.sendTrafficMsg(msgHandler, d.length, Constants.TTM_MSG_CODE);
                         } else {
-                            Utils.sendTrafficMsg(msgHandler, d.length, Constants.FT_MSG_CODE);
+                            Utils.sendTrafficMsg(msgHandler, d.length, Constants.TFM_MSG_CODE);
                         }
                         String dAsString = new String(d, Constants.encoding);
                         Log.d(tag, "writing Connect Data out to target host("+socket.getInetAddress().getHostAddress()+": "+dAsString+")");

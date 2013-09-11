@@ -19,6 +19,8 @@ import android.util.Log;
 
 
 public class PerfDBHelper extends SQLiteOpenHelper {
+    private static final int version = 1;
+
     private static final String TABLE_REQUESTS = "requests";
     private static final String COLUMN_ID = "_id";
     private static final String COLUMN_START_TIME = " st";
@@ -44,8 +46,8 @@ public class PerfDBHelper extends SQLiteOpenHelper {
     //private SQLiteDatabase db;
     public PerfDBHelper(Context c) {
         // change name to null for in mem db
-        super(c, "MOA_DB_" + (new Date().toLocaleString()), null, 0);
-        
+        super(c, "MOA_DB_" + (new Date().toLocaleString()), null, version);
+
     }
 
 
@@ -62,16 +64,29 @@ public class PerfDBHelper extends SQLiteOpenHelper {
         db.execSQL("DROP TABLE IF EXISTS " + TABLE_REQUESTS);
         onCreate(db);
     }
-    
+
     public long addRequest(long start){
         SQLiteDatabase db = this.getWritableDatabase();
         ContentValues cv = new ContentValues();
         cv.put(COLUMN_START_TIME, start);
         long id = db.insert(TABLE_REQUESTS, null, cv);
+        Log.d(PerfDBHelper.class.getName(), "added request with dbId: "+id);
         if(id == -1){
             Log.e(PerfDBHelper.class.getName(), " error inserting value into db");
         }
         return id;
+    }
+    public void setRequest(long id, long end, int cs){
+        SQLiteDatabase db = this.getWritableDatabase();
+        ContentValues cv = new ContentValues();
+        cv.put(COLUMN_CONTENT_SIZE, cs);
+        cv.put(COLUMN_END_TIME, end);
+        Log.d(PerfDBHelper.class.getName(), "setting request info for dbId:" + id);
+        int effected = db.update(TABLE_REQUESTS, cv, COLUMN_ID + " = " + id, null);
+        if(effected != 1){
+            Log.e(PerfDBHelper.class.getName(), " not 1 row effected by setRequest. effected= "+effected+ " CV= "+cv.toString()+" dbId= "+id);
+        }
+        db.close();
     }
 
 }

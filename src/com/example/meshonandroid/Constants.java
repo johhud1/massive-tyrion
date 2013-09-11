@@ -10,6 +10,7 @@ public class Constants {
     public static final byte PDU_DATAREPMSG = 5;
     public static final byte PDU_IPDISCOVER = 6;
     public static final byte PDU_CONNECTDATAMSG = 7;
+    public static final byte PDU_CONNECTIONCLOSEMSG = 8;
 
     public static final int EXITNODEREP_WAITTIME=700;
     public static final int MAX_NODES = 254;
@@ -21,12 +22,18 @@ public class Constants {
         + "Content-Type: text/html; charset=UTF-8\n" + "Content-Length: 240\n"
         + "Connection: close\n" + "request recieved\r\n\r\n";
 
+    public static final int LOCALPROXY_ACCEPT_TIMEOUT = 100;
+
     public static final int IP_staleness_time = 5;
 
     public static final int STATUS_MSG_CODE = 0;
     public static final int LOG_MSG_CODE = 1;
-    public static final int TF_MSG_CODE = 2;
-    public static final int FT_MSG_CODE = 3;
+    public static final int TTM_MSG_CODE = 2; //traffic through mesh (ie data the mesh has acquired on our behalf)
+    public static final int TFM_MSG_CODE = 3; //traffic from mesh (ie data for the mesh that we have downloaded on their behalf)
+
+    enum ContactSelectionStrategy{RoundRobin, FastestFirst};
+
+    public static final ContactSelectionStrategy CONTACT_STRATEGY = ContactSelectionStrategy.RoundRobin;
 
     public static final int CONTACT_STALENESSTIME = -1;
 

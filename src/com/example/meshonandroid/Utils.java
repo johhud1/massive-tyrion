@@ -15,6 +15,15 @@ public class Utils {
         handler.sendMessage(m);
     }
 
+    public static void sendHandlerMsg(Handler handler, int msgCode, String msg){
+        Message m = new Message();
+        m.arg1 = msgCode;
+        Bundle b = new Bundle();
+        b.putString("msg", msg);
+        m.setData(b);
+        handler.sendMessage(m);
+    }
+
     public static void addMsgToMainTextLog(Handler handler, String s){
         String tag = "Utils:addMsgToMainTextLog";
         Message m = new Message();
