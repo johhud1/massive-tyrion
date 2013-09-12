@@ -46,14 +46,19 @@ public class ProxyThread extends Thread implements Observer {
     private BufferedReader in;
     private String httpRequest;
     private AODVObserver mAodvObs;
-    private int broadcastId; //id number of this request, used to identify resp msgs from other responses to requests on this phone
-    private int destinationID;   //id of node in mesh that will be doing the data transfer for us
+    private int broadcastId; // id number of this request, used to identify resp
+                             // msgs from other responses to requests on this
+                             // phone
+    private int destinationID; // id of node in mesh that will be doing the data
+                               // transfer for us
     private int recievedPackets = 0;
-    private Handler msgHandler; //main activity handler (used for sending text msgs to main thread)
+    private Handler msgHandler; // main activity handler (used for sending text
+                                // msgs to main thread)
     private ConnectProxyThread mConnectProxyThread;
-    private long dbId; //id number of this request in db
+    private long dbId; // id number of this request in db
     private int cSize = 0;
     private Context mContext;
+
 
     public ProxyThread(Socket socket, Node node, AODVObserver aodvObs, int reqNumber,
                        Handler msgHandler, long id, Context c) {
@@ -91,8 +96,8 @@ public class ProxyThread extends Thread implements Observer {
             // begin get request from client
             while ((inputLine = in.readLine()) != null) {
                 httpRequest += inputLine + "\n";
-                if(cnt == 0){
-                    Log.d(tag, "request: "+httpRequest);
+                if (cnt == 0) {
+                    Log.d(tag, "request: " + httpRequest);
                 }
                 if (inputLine.equals("")) {
                     httpRequest += "\n";
@@ -130,11 +135,7 @@ public class ProxyThread extends Thread implements Observer {
         // DataResps)
         // broadcastID acts as identifier
         if (checkIDNumber(msg.getBroadcastID())) {
-            try {
-                Log.d(tag, "BroadcastID match; got msg: " + msg.toReadableString());
-            } catch (UnsupportedEncodingException e1) {
-                e1.printStackTrace();
-            }
+            Log.d(tag, "BroadcastID match; got msg: " + msg.toReadableString());
             switch (msg.getPduType()) {
             case Constants.PDU_DATAREPMSG:
                 Log.d(tag, "got pdu_datamsg");
@@ -151,27 +152,36 @@ public class ProxyThread extends Thread implements Observer {
                         // we got a packet out of order, write out anything that
                         // we can
                         // ie anything after index recievedPackets
-                        Log.e(ProxyThread.class.getName(), "packet recieved out of order. very untested code; check everythings working properly");
+                        Log.e(ProxyThread.class.getName(),
+                              "packet recieved out of order. very untested code; check everythings working properly");
                         int index = recievedPackets % WINDOW_SIZE;
                         while (packetBuf[index] != null
                                && isMoreRecent(packetBuf[(recievedPackets + 1) % WINDOW_SIZE],
                                                packetBuf[index])) {
                             byte[] outArray = Base64.decode(packetBuf[index].getDataBytes(), 0);
                             handleOutArray(outArray, dmsg);
-                            //sendTrafficForwardedMsg(outArray.length);
-                            //Utils.sendTrafficMsg(msgHandler, outArray.length, Constants.TF_MSG_CODE);
+                            // sendTrafficForwardedMsg(outArray.length);
+                            // Utils.sendTrafficMsg(msgHandler, outArray.length,
+                            // Constants.TF_MSG_CODE);
                             index = recievedPackets % WINDOW_SIZE;
                         }
 
                     }
                 } catch (Exception e) {
-                    //local browser may have closed connection because stream's no longer used
-                    //or something worse may have happened. In either case send a connectionKill message to the appropriate node
+                    // local browser may have closed connection because stream's
+                    // no longer used
+                    // or something worse may have happened. In either case send
+                    // a connectionKill message to the appropriate node
                     Log.e(ProxyThread.class.getName(), "exception " + e);
                     mAodvObs.deleteObserver(this);
-                    node.sendData(0, destinationID, new ConnectionClosedMsg(node.getNodeAddress(), 0, broadcastId).toBytes());
-                    //we're not gonna get a 'last packet' in this case, so just set the contentsize and endtime now
-                    LoggingDBUtils.setRequestEndTimeAndContentSize(dbId, System.currentTimeMillis(), cSize);
+                    node.sendData(0, destinationID, new ConnectionClosedMsg(node.getNodeAddress(),
+                                                                            0, broadcastId)
+                        .toBytes());
+                    // we're not gonna get a 'last packet' in this case, so just
+                    // set the contentsize and endtime now
+                    LoggingDBUtils.setRequestEndTimeAndContentSize(dbId,
+                                                                   System.currentTimeMillis(),
+                                                                   cSize);
                 }
 
                 break;
@@ -216,8 +226,10 @@ public class ProxyThread extends Thread implements Observer {
              */
         }
     }
-    private void handleOutArray(byte[] outArray, DataRepMsg dmsg) throws IOException{
-        //sendTrafficForwardedMsg(outArray.length);
+
+
+    private void handleOutArray(byte[] outArray, DataRepMsg dmsg) throws IOException {
+        // sendTrafficForwardedMsg(outArray.length);
         Utils.sendTrafficMsg(msgHandler, outArray.length, Constants.TTM_MSG_CODE);
         cSize += outArray.length;
         String respMsg = new String(outArray, Constants.encoding);
