@@ -30,6 +30,7 @@ import ch.boye.httpclientandroidlib.impl.client.DefaultHttpClient;
 import ch.boye.httpclientandroidlib.impl.conn.PoolingClientConnectionManager;
 import ch.boye.httpclientandroidlib.protocol.HttpContext;
 
+import com.example.meshonandroid.pdu.AODVObserver;
 import com.example.meshonandroid.pdu.ConnectDataMsg;
 import com.example.meshonandroid.pdu.ConnectionClosedMsg;
 import com.example.meshonandroid.pdu.DataMsg;
@@ -40,30 +41,28 @@ import com.example.meshonandroid.pdu.Msg;
 
 
 @TargetApi(Build.VERSION_CODES.GINGERBREAD)
-public class OutLinkManager implements Observer {
-
+public class OutLinkManager implements MeshMsgReceiver {
 
     private boolean mActiveNode = false;
     private Node mNode;
-    private int mContactId;
-    private SparseIntArray mPortToContactID = new SparseIntArray();
     private Handler msgHandler;
     private Context mContext;
     private DefaultHttpClient dhc;
     private SparseArray<HttpFetcher> fetcherMap = new SparseArray<HttpFetcher>();
 
-    private static int BUFSIZE = 512;
-    private byte[] responseBuf;
-
-    private Observable mAodvObserver;
+    private AODVObserver mAodvObserver;
 
 
     /**
-     * Constructor for creating a traffic manager.
+     * Constructor for creating an outbound traffic manager.
      *
-     * The traffic manager is responsible for responding to ExitNodeReqPDU's and
-     * for managing the mapping from local requests to Mesh network ID's (in
-     * order to forward traffic appropriately (think NAT))
+     * This class handles both standard HTTP requests (ie GET) as well as the
+     * proxy TCP port forwarding CONNECT HTTP request, as well as requests to
+     * use this node as an exit point from the mesh. When receiving a HTTP
+     * request, the OutLinkManager checks if its a CONNECT request. if so, it
+     * spawns off a ConnectProxyThread to handle the tunneling and forwarding.
+     * If it's a standard HTTP request, the manager spawns off a HTTPFetcher in
+     * its own thread, to download the resource
      *
      * @param
      */
@@ -76,7 +75,8 @@ public class OutLinkManager implements Observer {
         dhc.setRedirectStrategy(new RedirectStrategy() {
 
             @Override
-            public boolean
+            public
+                boolean
                 isRedirected(HttpRequest arg0, HttpResponse arg1, HttpContext arg2)
                                                                                    throws ProtocolException {
                 return false;
@@ -84,8 +84,10 @@ public class OutLinkManager implements Observer {
 
 
             @Override
-            public HttpUriRequest
-                getRedirect(HttpRequest arg0, HttpResponse arg1, HttpContext arg2) throws ProtocolException {
+            public
+                HttpUriRequest
+                getRedirect(HttpRequest arg0, HttpResponse arg1, HttpContext arg2)
+                                                                                  throws ProtocolException {
                 return null;
             }
         });
@@ -95,7 +97,7 @@ public class OutLinkManager implements Observer {
     public void connectionRequested(int senderID, MeshPduInterface msg) {
         String tag = "OutLinkManager:connectionRequested";
         if (mActiveNode && haveData()) {
-            Log.d(tag, "got connection request, seting up forwarding, responded with exitnoderep");
+            Log.d(tag, "got connection request from:"+senderID+" , seting up forwarding, responded with exitnoderep");
             setupForwardingConn(senderID, msg);
 
         } else {
@@ -120,54 +122,31 @@ public class OutLinkManager implements Observer {
     }
 
 
-    @Override
-    public void update(Observable arg0, Object m) {
-        String tag = "OutLinkManager:update";
-        MeshPduInterface msg = (MeshPduInterface) m;
-        try {
-            Log.d(tag, "got update. msg: " + msg.toReadableString());
-        } catch (UnsupportedEncodingException e3) {
-            e3.printStackTrace();
-        }
-        switch (msg.getPduType()) {
-        case Constants.PDU_DATAREQMSG:
-            DataMsg dmsg = (DataMsg) msg;
-            //int pid = dmsg.getPacketID();
-            // decode the http request
-            String httpRequest;
-            try {
-                httpRequest = new String(Base64.decode(dmsg.getDataBytes(), 0), Constants.encoding);
-                Log.d(tag, "got PDU_DATAREQMSG: " + httpRequest);
-                // CONNECT methods cause an HttpException in the
-                // ApacheRequestFactory
-                // catch that, and if that was the cause of exception, handle
-                // appropriately.
-                String[] request = httpRequest.split(" ");
-                if (isConnectHttpRequest(request)) {
-                    handleConnectRequest(request, dmsg);
-                } else {
-                        HttpFetcher fetcher = new HttpFetcher(httpRequest, dmsg, mNode, msgHandler, dhc);
-                        fetcherMap.put(dmsg.getBroadcastID(), fetcher);
-                        new Thread(fetcher).start();
-                }
-            } catch (UnsupportedEncodingException e4) {
-                e4.printStackTrace();
-            }
-            break;
-        case Constants.PDU_CONNECTIONCLOSEMSG:
-            ConnectionClosedMsg CCMsg = (ConnectionClosedMsg) msg;
-            Log.d(OutLinkManager.class.getName(), "closing connection. broadcastId: "+CCMsg.getBroadcastID());
-            HttpFetcher toClose = fetcherMap.get(CCMsg.getBroadcastID());
-            toClose.connectionOpen = false;
-            fetcherMap.remove(CCMsg.getBroadcastID());
-            break;
-        case Constants.PDU_CONNECTDATAMSG:
-            break;
-        default:
-        }
-
-    }
-
+    /*
+     * @Override public void update(Observable arg0, Object m) { String tag =
+     * "OutLinkManager:update"; MeshPduInterface msg = (MeshPduInterface) m; try
+     * { Log.d(tag, "got update. msg: " + msg.toReadableString()); } catch
+     * (UnsupportedEncodingException e3) { e3.printStackTrace(); } switch
+     * (msg.getPduType()) { case Constants.PDU_DATAREQMSG: DataMsg dmsg =
+     * (DataMsg) msg; //int pid = dmsg.getPacketID(); // decode the http request
+     * String httpRequest; try { httpRequest = new
+     * String(Base64.decode(dmsg.getDataBytes(), 0), Constants.encoding);
+     * Log.d(tag, "got PDU_DATAREQMSG: " + httpRequest); String[] request =
+     * httpRequest.split(" "); if (isConnectHttpRequest(request)) {
+     * handleConnectRequest(request, dmsg); } else { HttpFetcher fetcher = new
+     * HttpFetcher(httpRequest, dmsg, mNode, msgHandler, dhc);
+     * fetcherMap.put(dmsg.getBroadcastID(), fetcher); new
+     * Thread(fetcher).start(); } } catch (UnsupportedEncodingException e4) {
+     * e4.printStackTrace(); } break; case Constants.PDU_CONNECTIONCLOSEMSG:
+     * ConnectionClosedMsg CCMsg = (ConnectionClosedMsg) msg;
+     * Log.d(OutLinkManager.class.getName(),
+     * "closing connection. broadcastId: "+CCMsg.getBroadcastID()); HttpFetcher
+     * toClose = fetcherMap.get(CCMsg.getBroadcastID()); toClose.connectionOpen
+     * = false; fetcherMap.remove(CCMsg.getBroadcastID()); break; case
+     * Constants.PDU_CONNECTDATAMSG: break; default: }
+     *
+     * }
+     */
 
     private boolean isConnectHttpRequest(String[] request) {
         if ("CONNECT".equalsIgnoreCase(request[0])) { return true; }
@@ -179,10 +158,11 @@ public class OutLinkManager implements Observer {
         String tag = "OutLinkManager:handleConnectRequest";
 
         String[] addrPort = getAddrPort(request);
-        byte[] responseBuf = new byte[BUFSIZE];
         try {
             Socket targetConn = new Socket(addrPort[0], Integer.parseInt(addrPort[1]));
-            new ConnectProxyThread(targetConn, mNode, dmsg, true, mAodvObserver, msgHandler).start();
+            ConnectProxyThread cpt = new ConnectProxyThread(targetConn, mNode, dmsg.getSourceID(), dmsg.getBroadcastID(), true, mAodvObserver, msgHandler);
+            mAodvObserver.addConnectProxyThread(dmsg.getBroadcastID(), cpt);
+            cpt.start();
             // BufferedInputStream bis = new
             // BufferedInputStream(mConnectSocket.getInputStream());
             ConnectDataMsg resp = makeHttpConnectResponse(dmsg.getBroadcastID());
@@ -197,6 +177,10 @@ public class OutLinkManager implements Observer {
 
     }
 
+    //TODO: ugh this is awful. Summon the will to refactor things later so this doesn't happen :s
+    public void setAODVObserver(AODVObserver obs){
+        mAodvObserver = obs;
+    }
 
     private ConnectDataMsg
         makeHttpConnectResponse(int broadcastId) throws UnsupportedEncodingException {
@@ -212,10 +196,42 @@ public class OutLinkManager implements Observer {
         return httpRequest[1].split(":");
     }
 
-    // THIS IS THE WORST THING I'VE EVER DONE. and there's more in AODVObservers
-    // constructor. this madness should really be contained.
-    public void setAODVObserver(Observable aodvObserver) {
-        this.mAodvObserver = aodvObserver;
 
+    @Override
+    public void handleMessage(MeshPduInterface msg) {
+        switch (msg.getPduType()) {
+        case Constants.PDU_DATAREQMSG:
+            DataMsg dmsg = (DataMsg) msg;
+            // int pid = dmsg.getPacketID();
+            // decode the http request
+            String httpRequest;
+            try {
+                httpRequest = new String(Base64.decode(dmsg.getDataBytes(), 0), Constants.encoding);
+                Log.d(OutLinkManager.class.getName(), "got PDU_DATAREQMSG: " + httpRequest);
+                String[] request = httpRequest.split(" ");
+                if (isConnectHttpRequest(request)) {
+                    handleConnectRequest(request, dmsg);
+                } else {
+                    HttpFetcher fetcher =
+                        new HttpFetcher(httpRequest, dmsg, mNode, msgHandler, dhc);
+                    fetcherMap.put(dmsg.getBroadcastID(), fetcher);
+                    new Thread(fetcher).start();
+                }
+            } catch (UnsupportedEncodingException e4) {
+                e4.printStackTrace();
+            }
+            break;
+        case Constants.PDU_CONNECTIONCLOSEMSG:
+            ConnectionClosedMsg CCMsg = (ConnectionClosedMsg) msg;
+            Log.d(OutLinkManager.class.getName(),
+                  "closing connection. broadcastId: " + CCMsg.getBroadcastID());
+            HttpFetcher toClose = fetcherMap.get(CCMsg.getBroadcastID());
+            toClose.connectionOpen = false;
+            fetcherMap.remove(CCMsg.getBroadcastID());
+            break;
+        case Constants.PDU_CONNECTDATAMSG:
+            break;
+        default:
+        }
     }
 }

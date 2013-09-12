@@ -24,7 +24,7 @@ public interface MeshPduInterface {
 
     public String toString();
 
-    public String toReadableString() throws UnsupportedEncodingException;
+    public String toReadableString();
     /*
     public int getSequenceNumber();
 

@@ -27,7 +27,7 @@ import com.example.meshonandroid.pdu.DataRepMsg;
 public class HttpFetcher implements Runnable {
     String httpRequest;
     Node mNode;
-    int mContactId;
+    int mId;
     Handler mainActivityMsgHandler;
     int MAX_PAYLOAD_SIZE = Constants.MAX_PAYLOAD_SIZE;
     int BUFSIZE = 512;
@@ -40,7 +40,7 @@ public class HttpFetcher implements Runnable {
         httpRequest = hr;
         mNode = n;
         mainActivityMsgHandler = h;
-        mContactId = mNode.getNodeAddress();
+        mId = mNode.getNodeAddress();
         dmsg = msg;
         this.dhc = dhc;
     }
@@ -102,7 +102,7 @@ public class HttpFetcher implements Runnable {
                     redd = respStream.read(responseBuf, offset, responseBuf.length - offset);
                     while ((redd != -1) && connectionOpen) {
                         if (redd + offset >= responseBuf.length) {
-                            sendBuffer(responseBuf, responseBuf.length, pid);
+                            sendBuffer(responseBuf, responseBuf.length, pid, true);
                             pid++;
                             offset = 0;
                         } else {
@@ -111,14 +111,14 @@ public class HttpFetcher implements Runnable {
                         redd = respStream.read(responseBuf, offset, responseBuf.length - offset);
                     }
                     // send remaining data;
-                    sendBuffer(responseBuf, offset, pid);
+                    sendBuffer(responseBuf, offset, pid, false);
                 } else if (contLength == -1) {
                     // stream response data when we don't know the final length
                     byte[] responseBuf = Arrays.copyOf(out.toByteArray(), MAX_PAYLOAD_SIZE - 15000);
                     byte[] tempBuf = new byte[BUFSIZE];
                     while ((redd = respStream.read(tempBuf, 0, BUFSIZE)) > 0) {
                         if (redd + offset >= responseBuf.length) {
-                            sendBuffer(responseBuf, responseBuf.length, pid);
+                            sendBuffer(responseBuf, responseBuf.length, pid, true);
                             pid++;
                             offset = 0;
                             System.arraycopy(tempBuf, 0, responseBuf, offset, redd);
@@ -128,11 +128,11 @@ public class HttpFetcher implements Runnable {
                         offset += redd;
                     }
                     // send remaining data
-                    sendBuffer(responseBuf, offset, pid);
+                    sendBuffer(responseBuf, offset, pid, false);
                 } else {
                     // send contentless response (headers only)
                     byte[] responseBuf = Arrays.copyOf(out.toByteArray(), bufLength);
-                    sendBuffer(responseBuf, responseBuf.length, pid);
+                    sendBuffer(responseBuf, responseBuf.length, pid, false);
                 }
                 respStream.close();
                 return;
@@ -142,7 +142,7 @@ public class HttpFetcher implements Runnable {
             // send contentless response (headers only)
             byte[] responseBuf = Arrays.copyOf(out.toByteArray(), bufLength);
             DataMsg respData =
-                new DataRepMsg(mContactId, pid, dmsg.getBroadcastID(),
+                new DataRepMsg(mId, pid, dmsg.getBroadcastID(),
                                Base64.encode(responseBuf, 0), false);
             byte[] msgBytes = respData.toBytes();
             mNode.sendData(pid, dmsg.getSourceID(), msgBytes);
@@ -159,24 +159,24 @@ public class HttpFetcher implements Runnable {
 
 
     private void
-        sendBuffer(byte[] responseBuf, int limit, int pid) throws UnsupportedEncodingException {
+        sendBuffer(byte[] responseBuf, int limit, int pid, boolean areMorePackets) throws UnsupportedEncodingException {
         String tag = "HttpFetcher:sendBuffer";
-        if(limit == 0){
+        /*if(limit == 0){
             //limits zero, 0 byte buffer. do nothing
             return;
-        }
-        Log.d(tag, "sending packet("+pid+") off; size: "+limit/1000+"KB");
+        }*/
+        Log.d(tag, "sending off packet("+pid+") for requestId:"+dmsg.getBroadcastID()+" ; size: "+limit/1000+"KB");
         Utils.sendTrafficMsg(mainActivityMsgHandler, limit, Constants.TFM_MSG_CODE);
         if (limit == responseBuf.length) {
             DataMsg respData =
-                new DataRepMsg(mContactId, pid, dmsg.getBroadcastID(),
-                               Base64.encode(responseBuf, 0), true);
+                new DataRepMsg(mId, pid, dmsg.getBroadcastID(),
+                               Base64.encode(responseBuf, 0), areMorePackets);
             byte[] msgBytes = respData.toBytes();
             mNode.sendData(pid, dmsg.getSourceID(), msgBytes);
         } else {
             DataMsg respData =
-                new DataRepMsg(mContactId, pid, dmsg.getBroadcastID(), Base64.encode(Arrays
-                    .copyOf(responseBuf, limit), 0), true);
+                new DataRepMsg(mId, pid, dmsg.getBroadcastID(), Base64.encode(Arrays
+                    .copyOf(responseBuf, limit), 0), areMorePackets);
             byte[] msgBytes = respData.toBytes();
             mNode.sendData(pid, dmsg.getSourceID(), msgBytes);
         }
@@ -188,7 +188,6 @@ public class HttpFetcher implements Runnable {
             mNode.sendData(pid, dmsg.getSourceID(), makeFailureDataRepMsg(e.getLocalizedMessage())
                 .toBytes());
         } catch (UnsupportedEncodingException e1) {
-            // TODO Auto-generated catch block
             e1.printStackTrace();
         }
     }
@@ -199,11 +198,11 @@ public class HttpFetcher implements Runnable {
             msg = "error: no detail msg provided";
         }
         try {
-            return new DataRepMsg(mContactId, dmsg.getPacketID(), dmsg.getBroadcastID(),
+            return new DataRepMsg(mId, dmsg.getPacketID(), dmsg.getBroadcastID(),
                                   Base64.encode(msg.getBytes(Constants.encoding), 0), false);
         } catch (UnsupportedEncodingException e) {
             e.printStackTrace();
-            return new DataRepMsg(mContactId, dmsg.getPacketID(), dmsg.getBroadcastID(),
+            return new DataRepMsg(mId, dmsg.getPacketID(), dmsg.getBroadcastID(),
                                   new byte[0], false);
         }
     }

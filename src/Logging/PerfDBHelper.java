@@ -65,7 +65,7 @@ public class PerfDBHelper extends SQLiteOpenHelper {
         onCreate(db);
     }
 
-    public long addRequest(long start){
+    synchronized long addRequest(long start){
         SQLiteDatabase db = this.getWritableDatabase();
         ContentValues cv = new ContentValues();
         cv.put(COLUMN_START_TIME, start);
@@ -74,9 +74,10 @@ public class PerfDBHelper extends SQLiteOpenHelper {
         if(id == -1){
             Log.e(PerfDBHelper.class.getName(), " error inserting value into db");
         }
+        db.close();
         return id;
     }
-    public void setRequest(long id, long end, int cs){
+    synchronized void setRequest(long id, long end, int cs){
         SQLiteDatabase db = this.getWritableDatabase();
         ContentValues cv = new ContentValues();
         cv.put(COLUMN_CONTENT_SIZE, cs);

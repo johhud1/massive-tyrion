@@ -49,6 +49,7 @@ public class NetworkInfoActivity extends Activity implements HandlerActivity {
     private FreeIPManager mFreeIPManager;
     private Node myNode;
     AODVObserver mObs;
+    private ContactManager mContactManager;
     private ProxyListener mPl;
     private OutLinkManager mOutLinkManager;
 
@@ -131,7 +132,7 @@ public class NetworkInfoActivity extends Activity implements HandlerActivity {
     //set as onClick method for start_service_but checkbox in the layout .xml file
     public void onCheckboxClicked(View view) {
         final String tag = "networkInfoActivity:onCheckboxClicked";
-        mCb.setEnabled(false);
+        mCb.setEnabled(false);//disable cb until process is completed,
         // Is the view now checked?
         boolean checked = ((CheckBox) view).isChecked();
 
@@ -139,7 +140,6 @@ public class NetworkInfoActivity extends Activity implements HandlerActivity {
         switch (view.getId()) {
         case R.id.start_service_but:
             if (checked) {
-                mCb.setEnabled(false);//disable cb until process is completed,
                 //signalled by recieving msg in this classes msghandler
 
                 // start proxy and mesh service
@@ -157,13 +157,9 @@ public class NetworkInfoActivity extends Activity implements HandlerActivity {
                             int myContactID = getMyID();
                             myNode = new Node(myContactID);
                             myNode.startThread();
-                            mFreeIPManager.setNode(myNode);
-                            mOutLinkManager =
-                                new OutLinkManager(true, myNode, myContactID, getHandler(), mThis);
-                            mObs = new AODVObserver(myNode, myContactID, mThis, mOutLinkManager);
-                            mObs.addObserver(mFreeIPManager);
+                            startManagers(myNode, myContactID, true);
                             mPl =
-                                new ProxyListener(getHandler(), 8080, myNode, mObs, mThis);
+                                new ProxyListener(getHandler(), 8080, myNode, mContactManager, mObs, mThis);
                             mPl.start();
                             Utils.sendHandlerMsg(getHandler(), Constants.STATUS_MSG_CODE, "mesh service ON. ID: "+rId);
 
@@ -173,7 +169,7 @@ public class NetworkInfoActivity extends Activity implements HandlerActivity {
                     }
                 }).start();
 
-            } else if(myNode != null){
+            } else if(myNode != null && mPl != null){
                 myNode.stopThread();
                 myNode.unBind();
                 mPl.stopListening();
@@ -183,6 +179,8 @@ public class NetworkInfoActivity extends Activity implements HandlerActivity {
                     Utils.sendHandlerMsg(getHandler(), Constants.STATUS_MSG_CODE, "Error stopping and reinitializing node");
                     e.printStackTrace();
                 }
+            } else {
+                mCb.setEnabled(true);
             }
             break;
         }
@@ -192,25 +190,26 @@ public class NetworkInfoActivity extends Activity implements HandlerActivity {
     private Node initializeStartNode(Handler handler) throws Exception {
         Node n = null;
 
-        int myContactID;// = getMyID();
         String[] cmd = { "source /data/mybin/init.sh 1" };
         RunAsRoot(cmd);
-        myContactID = getMyID();
+        int myContactID = getMyID();
         n = new Node(myContactID); // start myNode with 192.168.2.0.
                                    // use this node to gather IP info
                                    // for final ip/ID assignment.
         n.startThread();
-        mFreeIPManager = new FreeIPManager(n);
-        mOutLinkManager = new OutLinkManager(false, n, myContactID, handler, this);
-        mObs = new AODVObserver(n, myContactID, mThis, mOutLinkManager);
-        mObs.addObserver(mFreeIPManager);// add freeIpManager as observer,
-                                         // need to be notified of
-                                         // IPDiscover messages
+        startManagers(n, myContactID, false);
         Utils.sendHandlerMsg(handler, Constants.STATUS_MSG_CODE, "mesh service OFF");
         return n;
 
     }
 
+    private void startManagers(Node n, int myContactID, boolean activeOutLink){
+        mFreeIPManager = new FreeIPManager(n);
+        mOutLinkManager = new OutLinkManager(activeOutLink, n, myContactID, handler, this);
+        mContactManager = new ContactManager(n);
+        mObs = new AODVObserver(n, myContactID, mThis, mOutLinkManager, mContactManager, mFreeIPManager);
+        mOutLinkManager.setAODVObserver(mObs);
+    }
 
     public void RunAsRoot(String[] cmds) throws IOException {
         Process p = Runtime.getRuntime().exec("su");

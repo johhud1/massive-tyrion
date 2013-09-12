@@ -14,14 +14,16 @@ import android.util.Base64;
 import android.util.Log;
 
 import com.example.meshonandroid.Constants;
+import com.example.meshonandroid.MeshMsgReceiver;
 import com.example.meshonandroid.Utils;
+import com.example.meshonandroid.pdu.AODVObserver;
 import com.example.meshonandroid.pdu.ConnectDataMsg;
 import com.example.meshonandroid.pdu.DataMsg;
 import com.example.meshonandroid.pdu.MeshPduInterface;
 
 
 
-public class ConnectProxyThread extends Thread implements Observer {
+public class ConnectProxyThread extends Thread implements MeshMsgReceiver {
 
     // constants, should probably move these somewhere
     private int TIMEOUT = 500;
@@ -35,19 +37,21 @@ public class ConnectProxyThread extends Thread implements Observer {
     private Node myNode;
     private int msgCode;
     private Handler msgHandler;
-    private Observable mAodvObserver;
+    private AODVObserver mAodvObserver;
+
+    volatile boolean keepListening = true;
 
 
-    public ConnectProxyThread(Socket s, Node n, MeshPduInterface msg, boolean isOutLink,
-                              Observable aodvObserver, Handler msgHandler) {
+    public ConnectProxyThread(Socket s, Node n, int dest, int bId, boolean isOutLink,
+                              AODVObserver aodvObserver, Handler msgHandler) {
         socket = s;
-        Destination = msg.getSourceID();
-        broadcastId = msg.getBroadcastID();
+        Destination = dest;
+        broadcastId = bId;
         myNode = n;
         isRequesterSide = !isOutLink;
-        aodvObserver.addObserver(this);
+        // aodvObserver.addObserver(this);
         mAodvObserver = aodvObserver;
-        if(isRequesterSide){
+        if (isRequesterSide) {
             msgCode = Constants.TTM_MSG_CODE;
         } else {
             msgCode = Constants.TFM_MSG_CODE;
@@ -65,11 +69,11 @@ public class ConnectProxyThread extends Thread implements Observer {
             byte[] data = new byte[BUFSIZE];
             int redd = 0;
 
-            while (true) {
+            while (keepListening) {
                 try {
                     redd = in.read(data);
                     if (redd == -1) {
-                        //read returning -1 indicates socket is closed. i hope.
+                        // read returning -1 indicates socket is closed. i hope.
                         break;
                     }
                     // read data from in, put it in a ConnectDataMsg and send it
@@ -78,7 +82,8 @@ public class ConnectProxyThread extends Thread implements Observer {
                         sendData(data, redd);
                     }
                 } catch (SocketTimeoutException e) {
-                    //don't want to wait to long, so timeout and send any recieved data
+                    // don't want to wait to long, so timeout and send any
+                    // recieved data
                     if (redd > 0) {
                         sendData(data, redd);
                     }
@@ -93,27 +98,28 @@ public class ConnectProxyThread extends Thread implements Observer {
                 Log.d(tag,
                       "connection appears to have been terminated. Sending emtpy ConnectDataMsg to: "
                           + Destination);
-                mAodvObserver.deleteObserver(this);
+                // mAodvObserver.deleteObserver(this);
                 sendSocketCloseMsg(myNode, Destination, isRequesterSide);
             }
         } catch (IOException e) {
-            mAodvObserver.deleteObserver(this);
+            // mAodvObserver.deleteObserver(this);
             sendSocketCloseMsg(myNode, Destination, isRequesterSide);
             e.printStackTrace();
         }
 
     }
 
-    private void sendSocketCloseMsg(Node myNode, int broadcastId, boolean isReq){
+
+    private void sendSocketCloseMsg(Node myNode, int broadcastId, boolean isReq) {
         ConnectDataMsg cdm =
-            new ConnectDataMsg(myNode.getNodeAddress(), 0, broadcastId, new byte[0], isReq,
-                               true);
+            new ConnectDataMsg(myNode.getNodeAddress(), 0, broadcastId, new byte[0], isReq, true);
         try {
             myNode.sendData(0, Destination, cdm.toBytes());
         } catch (UnsupportedEncodingException e) {
             e.printStackTrace();
         }
     }
+
 
     private void sendData(byte[] data, int length) throws IOException {
         String tag = "ConnectProxyInfo";// "ConnectProxyThread:sendData";
@@ -130,50 +136,77 @@ public class ConnectProxyThread extends Thread implements Observer {
     }
 
 
+    /*
+     * @Override public void update(Observable arg0, Object data) { String tag =
+     * "ConnectProxyInfo"; MeshPduInterface msg = (MeshPduInterface) data;
+     * DataMsg dmsg; if (broadcastId == (msg.getBroadcastID())) { Log.d(tag,
+     * "BroadcastID matchs"); switch (msg.getPduType()) { case
+     * Constants.PDU_CONNECTDATAMSG: ConnectDataMsg cdm = (ConnectDataMsg) msg;
+     * Log.d(tag, "got a connect data msg: " + cdm.toReadableString()); if
+     * (cdm.isConnectionSetupMsg() && cdm.getDataBytes().length == 0) { // empty
+     * connection setup message. means the connection was // closed. so close
+     * out our socket. set keepListening false keepListening = false; try {
+     * Log.d("ConnectProxy", "GOT EMPTY ConnectDataMsg; closing our socket");
+     * socket.close(); //TODO: should we remove this from aodvobserver ??
+     * //mAodvObserver.deleteObserver(this); } catch (IOException e) {
+     * e.printStackTrace(); } } if(!cdm.isConnectionSetupMsg()){ //got CONNECT
+     * tcp data, extract from msg, decode and forward it to the target host
+     * byte[] d = Base64.decode(cdm.getDataBytes(), 0); try {
+     * if(isRequesterSide){ Utils.sendTrafficMsg(msgHandler, d.length,
+     * Constants.TTM_MSG_CODE); } else { Utils.sendTrafficMsg(msgHandler,
+     * d.length, Constants.TFM_MSG_CODE); } String dAsString = new String(d,
+     * Constants.encoding); Log.d(tag,
+     * "writing Connect Data out to target host("
+     * +socket.getInetAddress().getHostAddress()+": "+dAsString+")");
+     * socket.getOutputStream().write(d); } catch (IOException e) {
+     * e.printStackTrace(); } } break; default: Log.d(tag, "default case"); }
+     *
+     * } }
+     */
+
     @Override
-    public void update(Observable arg0, Object data) {
+    public void handleMessage(MeshPduInterface msg) {
         String tag = "ConnectProxyInfo";
-        MeshPduInterface msg = (MeshPduInterface) data;
         DataMsg dmsg;
+        // TODO: remove this check, should be unnecessary with new design (sparseArray of ints (requestID's) to ConnextProxyThreads)
         if (broadcastId == (msg.getBroadcastID())) {
             Log.d(tag, "BroadcastID matchs");
-            switch (msg.getPduType()) {
-            case Constants.PDU_CONNECTDATAMSG:
-                ConnectDataMsg cdm = (ConnectDataMsg) msg;
-                Log.d(tag, "got a connect data msg: " + cdm.toReadableString());
-                if (cdm.isConnectionSetupMsg() && cdm.getDataBytes().length == 0) {
-                    // empty connection setup message. means the connection was
-                    // closed. so close out our socket.
-                    try {
-                        Log.d("ConnectProxy", "GOT EMPTY ConnectDataMsg; closing our socket");
-                        socket.close();
-                        //TODO: should we remove this from aodvobserver ??
-                        mAodvObserver.deleteObserver(this);
-                    } catch (IOException e) {
-                        e.printStackTrace();
-                    }
+
+            ConnectDataMsg cdm = (ConnectDataMsg) msg;
+            Log.d(tag, "got a connect data msg: " + cdm.toReadableString());
+            if (cdm.isConnectionSetupMsg() && cdm.getDataBytes().length == 0) {
+                // empty connection setup message. means the connection was
+                // closed. so close out our socket. set keepListening false
+                keepListening = false;
+                try {
+                    Log.d("ConnectProxy", "GOT EMPTY ConnectDataMsg; closing our socket");
+                    socket.close();
+                    // TODO: should we remove this from aodvobserver ??
+                    // mAodvObserver.deleteObserver(this);
+                } catch (IOException e) {
+                    e.printStackTrace();
                 }
-                if(!cdm.isConnectionSetupMsg()){
-                    //got CONNECT tcp data, extract from msg, decode and forward it to the target host
-                    byte[] d = Base64.decode(cdm.getDataBytes(), 0);
-                    try {
-                        if(isRequesterSide){
-                            Utils.sendTrafficMsg(msgHandler, d.length, Constants.TTM_MSG_CODE);
-                        } else {
-                            Utils.sendTrafficMsg(msgHandler, d.length, Constants.TFM_MSG_CODE);
-                        }
-                        String dAsString = new String(d, Constants.encoding);
-                        Log.d(tag, "writing Connect Data out to target host("+socket.getInetAddress().getHostAddress()+": "+dAsString+")");
-                        socket.getOutputStream().write(d);
-                    } catch (IOException e) {
-                        e.printStackTrace();
+                return;
+            }
+            //if (!cdm.isConnectionSetupMsg()) {
+                // got CONNECT tcp data, extract from msg, decode and forward it
+                // to the target host
+                byte[] d = Base64.decode(cdm.getDataBytes(), 0);
+                try {
+                    if (isRequesterSide) {
+                        Utils.sendTrafficMsg(msgHandler, d.length, Constants.TTM_MSG_CODE);
+                    } else {
+                        Utils.sendTrafficMsg(msgHandler, d.length, Constants.TFM_MSG_CODE);
                     }
+                    String dAsString = new String(d, Constants.encoding);
+                    Log.d(tag, "writing Connect Data out to target host("
+                               + socket.getInetAddress().getHostAddress() + ": " + dAsString + ")");
+                    socket.getOutputStream().write(d);
+                } catch (IOException e) {
+                    e.printStackTrace();
                 }
-                break;
-            default:
-                Log.d(tag, "default case");
             }
 
-        }
+        //}
     }
 }

@@ -24,7 +24,6 @@ public class Msg implements MeshPduInterface {
         try {
             bytes = this.toString().getBytes(Constants.encoding);
         } catch (UnsupportedEncodingException e) {
-            // TODO Auto-generated catch block
             e.printStackTrace();
         }
         return bytes;

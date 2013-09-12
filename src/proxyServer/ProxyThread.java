@@ -10,6 +10,8 @@ import java.net.SocketException;
 import java.util.Observable;
 import java.util.Observer;
 import java.util.StringTokenizer;
+import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.LinkedBlockingQueue;
 
 import Logging.LoggingDBUtils;
 import Logging.PerfDBHelper;
@@ -21,6 +23,7 @@ import android.util.Base64;
 import android.util.Log;
 
 import com.example.meshonandroid.Constants;
+import com.example.meshonandroid.OutLinkManager;
 import com.example.meshonandroid.Utils;
 import com.example.meshonandroid.pdu.AODVObserver;
 import com.example.meshonandroid.pdu.ConnectDataMsg;
@@ -32,7 +35,7 @@ import com.example.meshonandroid.pdu.MeshPduInterface;
 
 
 
-public class ProxyThread extends Thread implements Observer {
+public class ProxyThread extends Thread {
     private static final int MAX_PACKETS = 200; // this number is arbitrary
     // private byte[][] packetBuf;
     private DataRepMsg[] packetBuf;
@@ -46,27 +49,33 @@ public class ProxyThread extends Thread implements Observer {
     private BufferedReader in;
     private String httpRequest;
     private AODVObserver mAodvObs;
-    private int broadcastId; //id number of this request, used to identify resp msgs from other responses to requests on this phone
-    private int destinationID;   //id of node in mesh that will be doing the data transfer for us
+    private int broadcastId; // id number of this request, used to identify resp
+                             // msgs from other responses to requests on this
+                             // phone
+    private int destinationID; // id of node in mesh that will be doing the data
+                               // transfer for us
     private int recievedPackets = 0;
-    private Handler msgHandler; //main activity handler (used for sending text msgs to main thread)
+    private Handler msgHandler; // main activity handler (used for sending text
+                                // msgs to main thread)
     private ConnectProxyThread mConnectProxyThread;
-    private long dbId; //id number of this request in db
+    private long dbId; // id number of this request in db
     private int cSize = 0;
-    private Context mContext;
+    private boolean expectingMorePackets = true;
+
+    private LinkedBlockingQueue<DataRepMsg> dataRepQ = new LinkedBlockingQueue<DataRepMsg>();
+
 
     public ProxyThread(Socket socket, Node node, AODVObserver aodvObs, int reqNumber,
                        Handler msgHandler, long id, Context c) {
         super("ProxyThread");
         this.socket = socket;
         this.node = node;
-        aodvObs.addObserver(this);
+        // aodvObs.addObserver(this);
         mAodvObs = aodvObs;
         dbId = id;
         this.msgHandler = msgHandler;
         this.broadcastId = reqNumber;
         packetBuf = new DataRepMsg[WINDOW_SIZE];
-        mContext = c;
     }
 
 
@@ -91,8 +100,8 @@ public class ProxyThread extends Thread implements Observer {
             // begin get request from client
             while ((inputLine = in.readLine()) != null) {
                 httpRequest += inputLine + "\n";
-                if(cnt == 0){
-                    Log.d(tag, "request: "+httpRequest);
+                if (cnt == 0) {
+                    Log.d(tag, "request: " + httpRequest);
                 }
                 if (inputLine.equals("")) {
                     httpRequest += "\n";
@@ -103,24 +112,103 @@ public class ProxyThread extends Thread implements Observer {
             }
             // end get request from client
 
-            // using contactManager, contactID should be set to valid hasData
-            // mesh node. send data straight off.
-            try {
+            // for simplicity, gonna check if its a CONNECT request here, spawn
+            // ConnectProxyThread and add it to the
+            // AODVObservers ConnectProxyList. this is a bit hacky
+            //destination node shold recieve dataReq, handle it in OutLinkManager, (setup CPT over there)
+            //and respond with ConnectDataMsg
+            String[] request = httpRequest.split(" ");
+            if (isConnectHttpRequest(request)) {
+                ConnectProxyThread cpt =
+                    new ConnectProxyThread(socket, node, destinationID, broadcastId, false,
+                                           mAodvObs, msgHandler);
+                mAodvObs.addConnectProxyThread(broadcastId, cpt);
+                cpt.start();
                 DataMsg dreq =
                     new DataReqMsg(node.getNodeAddress(), 0, broadcastId, Base64.encode(httpRequest
                         .getBytes(Constants.encoding), 0));
                 node.sendData(0, destinationID, dreq.toBytes());
-            } catch (UnsupportedEncodingException e) {
-                e.printStackTrace();
+                expectingMorePackets = false;
+                mAodvObs.removeProxyThread(broadcastId);
+            } else {
+                // using contactManager, contactID should be set to valid
+                // hasData
+                // mesh node. send data straight off.
+                try {
+                    Log.d(ProxyThread.class.getName(), "sending request to nodeID: "+destinationID);
+                    DataMsg dreq =
+                        new DataReqMsg(node.getNodeAddress(), 0, broadcastId,
+                                       Base64.encode(httpRequest.getBytes(Constants.encoding), 0));
+                    node.sendData(0, destinationID, dreq.toBytes());
+                } catch (UnsupportedEncodingException e) {
+                    e.printStackTrace();
+                }
             }
 
         } catch (Exception e) {
             // can redirect this to error log
             System.err.println("Encountered exception: " + e);
         }
+        // receive packets and forward them to the local user until we don't
+        // expect anymore
+        while (expectingMorePackets) {
+            DataRepMsg rep = null;
+            try {
+                rep = dataRepQ.take();
+            } catch (InterruptedException e1) {
+                e1.printStackTrace();
+            }
+            if (rep != null) {
+                Log.d(ProxyThread.class.getName(), "got pdu_datamsg");
+                try {
+                    forwardMsgDataToReceiver(rep);
+                } catch (IOException e) {
+                    // local browser may have closed connection because stream's
+                    // no longer used
+                    // or something worse may have happened. In either case send
+                    // a connectionKill message to the appropriate node so it
+                    // stops its HTTPFetcher thread
+                    e.printStackTrace();
+                    // mAodvObs.deleteObserver(this);
+                    node.sendData(0, destinationID, new ConnectionClosedMsg(node.getNodeAddress(),
+                                                                            0, broadcastId)
+                        .toBytes());
+                    stopProxyThread();
+                }
+            }
+        }
     }
 
 
+    private boolean isConnectHttpRequest(String[] request) {
+        if ("CONNECT".equalsIgnoreCase(request[0])) { return true; }
+        return false;
+    }
+
+
+    /**
+     * always called when the proxy thread is stopped, so close the socket,
+     * remove this ProxyThread from the list of active proxyThreads, update the
+     * database with the request stats and set boolean so run finishes
+     */
+    private void stopProxyThread() {
+        Log.d(ProxyThread.class.getName()+":stopProxyThread", "closing thread for bId: "+broadcastId);
+        LoggingDBUtils.setRequestEndTimeAndContentSize(dbId, System.currentTimeMillis(), cSize);
+        mAodvObs.removeProxyThread(broadcastId);
+        expectingMorePackets = false;
+        try {
+            socket.close();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+
+    public void PushPacketOnDataRepQ(DataRepMsg msg) {
+        dataRepQ.add(msg);
+    }
+
+/*
     @Override
     public void update(Observable observable, Object data) {
         String tag = "ProxyThread:update";
@@ -145,33 +233,40 @@ public class ProxyThread extends Thread implements Observer {
                 // b64 bytes
                 try {
                     if (recievedPackets == dmsg.getPacketID()) {
-                        byte[] outArray = Base64.decode(dmsg.getDataBytes(), 0);
-                        handleOutArray(outArray, dmsg);
+                        forwardMsgDataToReceiver(dmsg);
                     } else {
                         // we got a packet out of order, write out anything that
                         // we can
                         // ie anything after index recievedPackets
-                        Log.e(ProxyThread.class.getName(), "packet recieved out of order. very untested code; check everythings working properly");
+                        Log.e(ProxyThread.class.getName(),
+                              "packet recieved out of order. very untested code; check everythings working properly");
                         int index = recievedPackets % WINDOW_SIZE;
                         while (packetBuf[index] != null
                                && isMoreRecent(packetBuf[(recievedPackets + 1) % WINDOW_SIZE],
                                                packetBuf[index])) {
-                            byte[] outArray = Base64.decode(packetBuf[index].getDataBytes(), 0);
-                            handleOutArray(outArray, dmsg);
-                            //sendTrafficForwardedMsg(outArray.length);
-                            //Utils.sendTrafficMsg(msgHandler, outArray.length, Constants.TF_MSG_CODE);
+                            forwardMsgDataToReceiver(packetBuf[index]);
+                            // sendTrafficForwardedMsg(outArray.length);
+                            // Utils.sendTrafficMsg(msgHandler, outArray.length,
+                            // Constants.TF_MSG_CODE);
                             index = recievedPackets % WINDOW_SIZE;
                         }
 
                     }
                 } catch (Exception e) {
-                    //local browser may have closed connection because stream's no longer used
-                    //or something worse may have happened. In either case send a connectionKill message to the appropriate node
+                    // local browser may have closed connection because stream's
+                    // no longer used
+                    // or something worse may have happened. In either case send
+                    // a connectionKill message to the appropriate node
                     Log.e(ProxyThread.class.getName(), "exception " + e);
-                    mAodvObs.deleteObserver(this);
-                    node.sendData(0, destinationID, new ConnectionClosedMsg(node.getNodeAddress(), 0, broadcastId).toBytes());
-                    //we're not gonna get a 'last packet' in this case, so just set the contentsize and endtime now
-                    LoggingDBUtils.setRequestEndTimeAndContentSize(dbId, System.currentTimeMillis(), cSize);
+                    // mAodvObs.deleteObserver(this);
+                    node.sendData(0, destinationID, new ConnectionClosedMsg(node.getNodeAddress(),
+                                                                            0, broadcastId)
+                        .toBytes());
+                    // we're not gonna get a 'last packet' in this case, so just
+                    // set the contentsize and endtime now
+                    LoggingDBUtils.setRequestEndTimeAndContentSize(dbId,
+                                                                   System.currentTimeMillis(),
+                                                                   cSize);
                 }
 
                 break;
@@ -210,14 +305,16 @@ public class ProxyThread extends Thread implements Observer {
         } else {
             // broadcast ID doesn't match our own, packet must be for different
             // request/proxythread
-            /*
-             * Log.d(tag, "BroadcastId doesn't match. Ours:" + broadcastId +
-             * " found:" + msg.getBroadcastID());
-             */
+            //
+            // Log.d(tag, "BroadcastId doesn't match. Ours:" + broadcastId +
+             // " found:" + msg.getBroadcastID());
+             //
         }
     }
-    private void handleOutArray(byte[] outArray, DataRepMsg dmsg) throws IOException{
-        //sendTrafficForwardedMsg(outArray.length);
+*/
+
+    private void forwardMsgDataToReceiver(DataRepMsg dmsg) throws IOException {
+        byte[] outArray = Base64.decode(dmsg.getDataBytes(), 0);
         Utils.sendTrafficMsg(msgHandler, outArray.length, Constants.TTM_MSG_CODE);
         cSize += outArray.length;
         String respMsg = new String(outArray, Constants.encoding);
@@ -228,9 +325,13 @@ public class ProxyThread extends Thread implements Observer {
             // as an
             // aodv
             // observer
-            mAodvObs.deleteObserver(this);
+            stopProxyThread();
+            /*
+            mAodvObs.removeProxyThread(broadcastId);
             LoggingDBUtils.setRequestEndTimeAndContentSize(dbId, System.currentTimeMillis(), cSize);
             socket.close();
+            Log.d(ProxyThread.class.getName(), "closing thread for bId: "+broadcastId+ " resource: " + httpRequest.split(" ")[1]);
+            expectingMorePackets = false;*/
         }
         recievedPackets++;
     }

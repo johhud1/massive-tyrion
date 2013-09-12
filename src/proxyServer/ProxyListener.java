@@ -33,13 +33,12 @@ public class ProxyListener extends Thread {
     AODVObserver aodvobs;
     Context mContext;
 
-    public ProxyListener(Handler msgHandler, int port, Node node, AODVObserver aodvobs, Context c) {
+    public ProxyListener(Handler msgHandler, int port, Node node, ContactManager cman, AODVObserver aodvobs, Context c) {
         super();
         this.port = port;
         this.node = node;
         this.aodvobs = aodvobs;
-        contactManager = new ContactManager(node);
-        aodvobs.addObserver(contactManager);
+        contactManager = cman;
         reqNumber = 0;
         this.msgHandler = msgHandler;
         mContext = c;
@@ -64,7 +63,10 @@ public class ProxyListener extends Thread {
                 int reqNumber = getReqNumber();
                 int c = contactManager.GetContact(reqNumber);
                 Log.d(tag, "contactManager.GetContact() returned contact:" + c);
-                new ProxyThread(s, node, aodvobs, reqNumber, c, msgHandler, id, mContext).start();
+                //TODO: implement code for using my own modem sometimes.
+                ProxyThread pt = new ProxyThread(s, node, aodvobs, reqNumber, c, msgHandler, id, mContext);
+                aodvobs.addProxyThread(reqNumber, pt);
+                pt.start();
             } catch (InterruptedIOException e){
                 continue;
             } catch (IOException e) {
@@ -77,13 +79,12 @@ public class ProxyListener extends Thread {
             } catch (NoContactsAvailableException e) {
                 Utils.addMsgToMainTextLog(msgHandler, "No available contacts found in mesh");
                 e.printStackTrace();
-            } 
+            }
         }
         Log.d(ProxyListener.class.getName(), " shutting down ProxyListener port: " + port + " serverSocket: " + serverSocket.toString());
         try {
             serverSocket.close();
         } catch (IOException e) {
-            // TODO Auto-generated catch block
             e.printStackTrace();
         }
     }

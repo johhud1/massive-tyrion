@@ -24,7 +24,7 @@ public class Constants {
 
     public static final int LOCALPROXY_ACCEPT_TIMEOUT = 100;
 
-    public static final int IP_staleness_time = 5;
+    public static final int IP_staleness_time = 5; //in minutes
 
     public static final int STATUS_MSG_CODE = 0;
     public static final int LOG_MSG_CODE = 1;
