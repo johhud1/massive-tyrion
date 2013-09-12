@@ -6,17 +6,13 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.UnsupportedEncodingException;
 import java.net.Socket;
-import java.net.SocketException;
 import java.util.Observable;
 import java.util.Observer;
-import java.util.StringTokenizer;
 
 import Logging.LoggingDBUtils;
-import Logging.PerfDBHelper;
 import adhoc.aodv.Node;
 import android.content.Context;
 import android.os.Handler;
-import android.os.Message;
 import android.util.Base64;
 import android.util.Log;
 
@@ -135,7 +131,12 @@ public class ProxyThread extends Thread implements Observer {
         // DataResps)
         // broadcastID acts as identifier
         if (checkIDNumber(msg.getBroadcastID())) {
-            Log.d(tag, "BroadcastID match; got msg: " + msg.toReadableString());
+            try {
+                Log.d(tag, "BroadcastID match; got msg: " + msg.toReadableString());
+            } catch (UnsupportedEncodingException e1) {
+                // TODO Auto-generated catch block
+                e1.printStackTrace();
+            }
             switch (msg.getPduType()) {
             case Constants.PDU_DATAREPMSG:
                 Log.d(tag, "got pdu_datamsg");

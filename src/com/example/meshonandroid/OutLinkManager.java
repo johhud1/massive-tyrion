@@ -124,7 +124,12 @@ public class OutLinkManager implements Observer {
     public void update(Observable arg0, Object m) {
         String tag = "OutLinkManager:update";
         MeshPduInterface msg = (MeshPduInterface) m;
-        Log.d(tag, "got update. msg: " + msg.toReadableString());
+        try {
+            Log.d(tag, "got update. msg: " + msg.toReadableString());
+        } catch (UnsupportedEncodingException e) {
+            // TODO Auto-generated catch block
+            e.printStackTrace();
+        }
         switch (msg.getPduType()) {
         case Constants.PDU_DATAREQMSG:
             DataMsg dmsg = (DataMsg) msg;

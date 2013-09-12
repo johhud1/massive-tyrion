@@ -86,7 +86,12 @@ public class FreeIPManager implements Observer {
     public void update(Observable observable, Object msg) {
         String tag = "NetworkInfo:update";
         MeshPduInterface meshMsg = (MeshPduInterface) msg;
-        Log.d(tag, "got msg: " + meshMsg.toReadableString());
+        try {
+            Log.d(tag, "got msg: " + meshMsg.toReadableString());
+        } catch (UnsupportedEncodingException e1) {
+            // TODO Auto-generated catch block
+            e1.printStackTrace();
+        }
         switch (meshMsg.getPduType()) {
         case Constants.PDU_IPDISCOVER:
             IPDiscoverMsg m = (IPDiscoverMsg) msg;
