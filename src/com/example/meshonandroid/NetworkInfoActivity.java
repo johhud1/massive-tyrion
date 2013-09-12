@@ -66,7 +66,7 @@ public class NetworkInfoActivity extends Activity implements HandlerActivity {
         StrictMode.ThreadPolicy policy = new StrictMode.ThreadPolicy.Builder().permitAll().build();
         StrictMode.setThreadPolicy(policy);
         super.onCreate(savedInstanceState);
-        //adhoc.etc.Debug.setDebugStream(System.out);
+        adhoc.etc.Debug.setDebugStream(System.out);
 
 
         setContentView(R.layout.netinfo_layout);
