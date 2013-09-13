@@ -11,6 +11,7 @@ import Logging.PerfDBHelper;
 import adhoc.aodv.Node;
 import android.content.Context;
 import android.os.Handler;
+import android.support.v4.content.LocalBroadcastManager;
 import android.util.Log;
 
 import com.example.meshonandroid.Constants;
@@ -27,20 +28,20 @@ public class ProxyListener extends Thread {
     private ServerSocket serverSocket = null;
     private boolean listening = true;
     private ContactManager contactManager;
-    private Handler msgHandler;
+    private LocalBroadcastManager msgBroadcaster;
     int port = 8080; // default
     Node node;
     AODVObserver aodvobs;
     Context mContext;
 
-    public ProxyListener(Handler msgHandler, int port, Node node, ContactManager cman, AODVObserver aodvobs, Context c) {
+    public ProxyListener(LocalBroadcastManager broadcaster, int port, Node node, ContactManager cman, AODVObserver aodvobs, Context c) {
         super();
         this.port = port;
         this.node = node;
         this.aodvobs = aodvobs;
         contactManager = cman;
         reqNumber = 0;
-        this.msgHandler = msgHandler;
+        this.msgBroadcaster = broadcaster;
         mContext = c;
     }
 
@@ -64,7 +65,7 @@ public class ProxyListener extends Thread {
                 int c = contactManager.GetContact(reqNumber);
                 Log.d(tag, "contactManager.GetContact() returned contact:" + c);
                 //TODO: implement code for using my own modem sometimes.
-                ProxyThread pt = new ProxyThread(s, node, aodvobs, reqNumber, c, msgHandler, id, mContext);
+                ProxyThread pt = new ProxyThread(s, node, aodvobs, reqNumber, c, msgBroadcaster, id, mContext);
                 aodvobs.addProxyThread(reqNumber, pt);
                 pt.start();
             } catch (InterruptedIOException e){
@@ -77,7 +78,7 @@ public class ProxyListener extends Thread {
                     e1.printStackTrace();
                 }
             } catch (NoContactsAvailableException e) {
-                Utils.addMsgToMainTextLog(msgHandler, "No available contacts found in mesh");
+                Utils.sendUIUpdateMsg(msgBroadcaster, Constants.LOG_MSG_CODE, "No available contacts found in mesh");
                 e.printStackTrace();
             }
         }

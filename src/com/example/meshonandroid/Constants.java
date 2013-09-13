@@ -37,6 +37,11 @@ public class Constants {
 
     public static final int CONTACT_STALENESSTIME = -1;
 
+    protected static final String INIT_SCRIPT_PATH = "/data/mybin/init.sh";
+
+    protected static final String MESH_MSG_KEY = "MSGKEY";
+    protected static final String MESH_MSG_CODE_KEY = "MSGCODEKEY";
+
 
     public static int MAX_PAYLOAD_SIZE = adhoc.aodv.Constants.MAX_PACKAGE_SIZE - (4 * 1000); // 8
                                                                                               // ints

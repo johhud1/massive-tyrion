@@ -30,6 +30,7 @@
         <activity
             android:name="com.example.meshonandroid.NetworkInfoActivity">
         </activity>
+        <service android:name=".MeshService"></service>
     </application>
 
 

@@ -11,6 +11,7 @@ import adhoc.aodv.Node.MessageToObserver;
 import adhoc.aodv.Node.PacketToObserver;
 import adhoc.aodv.ObserverConst;
 import adhoc.aodv.exception.BadPduFormatException;
+import android.support.v4.content.LocalBroadcastManager;
 import android.util.Log;
 import android.util.SparseArray;
 
@@ -25,17 +26,16 @@ import com.example.meshonandroid.Utils;
 
 public class AODVObserver implements Observer {
     private OutLinkManager mOutLinkManager;
-    private HandlerActivity mActivity;
+    private LocalBroadcastManager mBroadcaster;
     private ContactManager mContactManager;
     private FreeIPManager mIPManager;
     private SparseArray<ProxyThread> proxyThreadArray = new SparseArray<ProxyThread>();
     private SparseArray<ConnectProxyThread> connectProxyThreadArray = new SparseArray<ConnectProxyThread>();
 
-    public AODVObserver(Node node, int mId, HandlerActivity mainActivity, OutLinkManager oman, ContactManager cman, FreeIPManager ipman) {
-        node.addObserver(this);
+    public AODVObserver(int mId, LocalBroadcastManager broadcaster, OutLinkManager oman, ContactManager cman, FreeIPManager ipman) {
         mOutLinkManager =  oman;
         //mOutLinkManager.setAODVObserver(this);
-        mActivity = mainActivity;
+        mBroadcaster = broadcaster;
         mContactManager = cman;
         mIPManager = ipman;
         //this.addObserver(mOutLinkManager);
@@ -103,7 +103,7 @@ public class AODVObserver implements Observer {
                 //ProxyThreads and call that threads handle message or whatever
                 ProxyThread rThread = proxyThreadArray.get(dataRepMsg.broadcastID);
                 if(rThread != null){
-                    rThread.PushPacketOnDataRepQ(dataRepMsg);   
+                    rThread.PushPacketOnDataRepQ(dataRepMsg);
                 } else {
                     Log.e(AODVObserver.class.getName()+":DATAREPMSG", "couldn't find the ProxyThread for requestID:"+dataRepMsg.broadcastID+". somehow that ProxyThread got remove, THIS IS BAD");
                 }
@@ -180,7 +180,7 @@ public class AODVObserver implements Observer {
     }
 
     private void setMainTextViewWithString(String s){
-        Utils.addMsgToMainTextLog(mActivity.getHandler(), s);
+        Utils.sendUIUpdateMsg(mBroadcaster, Constants.LOG_MSG_CODE, s);
     }
 
     public void removeProxyThread(int broadcastId) {

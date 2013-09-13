@@ -16,4 +16,5 @@
     <string name="isRunning_key">ir_key</string>
     <string name="host_key">hk</string>
     <string name="port_key">pk</string>
+    <string name="join_mesh_notif">Joining the Mesh...</string>
 </resources>

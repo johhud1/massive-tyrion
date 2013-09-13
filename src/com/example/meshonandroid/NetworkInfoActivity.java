@@ -18,10 +18,15 @@ import Logging.PerfDBHelper;
 import adhoc.aodv.Node;
 import android.annotation.SuppressLint;
 import android.app.Activity;
+import android.content.BroadcastReceiver;
+import android.content.Context;
+import android.content.Intent;
+import android.content.IntentFilter;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Message;
 import android.os.StrictMode;
+import android.support.v4.content.LocalBroadcastManager;
 import android.util.Log;
 import android.view.View;
 import android.view.View.OnClickListener;
@@ -42,17 +47,13 @@ public class NetworkInfoActivity extends Activity implements HandlerActivity {
 
     private TextView outputTV;
     private WebView mWV;
-    private NetworkInfoActivity mThis = this;
 
     public Handler handler;
+    private BroadcastReceiver mReceiver;
 
-    private FreeIPManager mFreeIPManager;
-    private Node myNode;
     AODVObserver mObs;
-    private ContactManager mContactManager;
-    private ProxyListener mPl;
-    private OutLinkManager mOutLinkManager;
 
+    //TODO: should move this traffic data into MeshService so doesn't get wiped with the activity
     private double trafficThroughMesh = 0;
     private double trafficFromMesh = 0;
 
@@ -66,13 +67,11 @@ public class NetworkInfoActivity extends Activity implements HandlerActivity {
         StrictMode.ThreadPolicy policy = new StrictMode.ThreadPolicy.Builder().permitAll().build();
         StrictMode.setThreadPolicy(policy);
         super.onCreate(savedInstanceState);
-        adhoc.etc.Debug.setDebugStream(System.out);
+        //adhoc.etc.Debug.setDebugStream(System.out);
 
 
         setContentView(R.layout.netinfo_layout);
         mWV = (WebView) findViewById(R.id.webView);
-        Button sendUDPBroadcastBut = (Button) findViewById(R.id.sendUDPButton);
-        CheckBox startProxy = (CheckBox) findViewById(R.id.start_service_but);
 
         mWV.setWebViewClient(new myWebViewClient());
         Button loadPageBut = (Button) findViewById(R.id.load_page_but);
@@ -82,9 +81,50 @@ public class NetworkInfoActivity extends Activity implements HandlerActivity {
                                                                                             // server
                                                                                             // here!!!
         LoggingDBUtils.mDBHelper =  new PerfDBHelper(this); //since all access needs to be to the same DBHelper, stick it in this handy static class
-
+        mReceiver = new BroadcastReceiver() {
+            @Override
+            public void onReceive(Context context, Intent intent) {
+                int code = intent.getIntExtra(Constants.MESH_MSG_CODE_KEY, -1);
+                Log.d(NetworkInfoActivity.class.getName(), "recieved broadcast msg. code: "+code);
+                if(code == -1){
+                    Utils.LogError(this, "couldn't extract msg code from intent");
+                    return;
+                }
+                switch (code) {
+                case Constants.LOG_MSG_CODE:
+                    TextView tv = (TextView) findViewById(R.id.recvd_message_tv);
+                    String msg = intent.getStringExtra(Constants.MESH_MSG_KEY);
+                    setTextView(R.id.recvd_message_tv, tv.getText()
+                                                       + msg + "\n");
+                    break;
+                case Constants.STATUS_MSG_CODE:
+                    msg = intent.getStringExtra(Constants.MESH_MSG_KEY);
+                    setTextView(R.id.status_tv, msg);
+                    mCb.setEnabled(true);
+                    break;
+                case Constants.TTM_MSG_CODE: // traffic forwarded through mesh,
+                                            // (on our behalf) ie total data not
+                                            // going through 3g, instead being
+                                            // forwarded through mesh
+                    int traffic = intent.getIntExtra(Constants.MESH_MSG_KEY, -1);
+                    trafficThroughMesh += (double) traffic / (double) 1000;
+                    setTextView(R.id.tf_forus_tv, "Data through mesh (KBytes) "
+                                                  + trafficThroughMesh);
+                    break;
+                case Constants.TFM_MSG_CODE: // forwarded traffic that we have
+                                            // acted as the out link for. ie
+                                            // data we have pushed through our
+                                            // 3g modem for the benefit of the
+                                            // mesh
+                    traffic = intent.getIntExtra(Constants.MESH_MSG_KEY, -1);
+                    trafficFromMesh += (double) traffic / (double) 1000;
+                    setTextView(R.id.tf_byus_tv, "Data from mesh (KBytes): " + trafficFromMesh);
+                }
+            }
+        };
         mCb = (CheckBox) findViewById(R.id.start_service_but);
         mCb.setEnabled(true);
+        /*
         handler = new Handler() {
             @Override
             public void handleMessage(Message msg) {
@@ -116,15 +156,15 @@ public class NetworkInfoActivity extends Activity implements HandlerActivity {
                 }
 
             }
-        };
-
+        };*/
+/*
         try {
             myNode = initializeStartNode(handler);
         } catch (Exception e) {
             setTextView(R.id.status_tv, "Error initializing Node");
             e.printStackTrace();
         }
-
+*/
 
         setProxy(mWV);
     }
@@ -135,7 +175,7 @@ public class NetworkInfoActivity extends Activity implements HandlerActivity {
         mCb.setEnabled(false);//disable cb until process is completed,
         // Is the view now checked?
         boolean checked = ((CheckBox) view).isChecked();
-
+        Intent meshService = new Intent(this, MeshService.class);
         // Check which checkbox was clicked
         switch (view.getId()) {
         case R.id.start_service_but:
@@ -143,6 +183,9 @@ public class NetworkInfoActivity extends Activity implements HandlerActivity {
                 //signalled by recieving msg in this classes msghandler
 
                 // start proxy and mesh service
+
+                startService(meshService);
+                /*
                 new Thread(new Runnable() {
                     @Override
                     public void run() {
@@ -150,7 +193,7 @@ public class NetworkInfoActivity extends Activity implements HandlerActivity {
                             int rId = mFreeIPManager.getFreeID();
                             myNode.stopThread();
                             myNode.unBind();
-                            String cmd = "source /data/mybin/init.sh " + rId;
+                            String cmd = "source "+Constants.INIT_SCRIPT_PATH + " " + rId;
                             Log.d(tag, "got available address for last ip segment: " + rId
                                        + ". Cmd string: " + cmd);
                             RunAsRoot(new String[] { cmd });//
@@ -167,9 +210,13 @@ public class NetworkInfoActivity extends Activity implements HandlerActivity {
                             Utils.sendHandlerMsg(getHandler(), Constants.STATUS_MSG_CODE, "error starting mesh service");
                         }
                     }
-                }).start();
+                }).start();*/
 
-            } else if(myNode != null && mPl != null){
+            } else {
+                stopService(meshService);
+            }
+            /*
+            if(myNode != null && mPl != null){
                 myNode.stopThread();
                 myNode.unBind();
                 mPl.stopListening();
@@ -178,19 +225,28 @@ public class NetworkInfoActivity extends Activity implements HandlerActivity {
                 } catch (Exception e) {
                     Utils.sendHandlerMsg(getHandler(), Constants.STATUS_MSG_CODE, "Error stopping and reinitializing node");
                     e.printStackTrace();
-                }
             } else {
                 mCb.setEnabled(true);
-            }
+            }*/
             break;
         }
     }
+    @Override
+    protected void onStart() {
+        super.onStart();
+        LocalBroadcastManager.getInstance(this).registerReceiver((mReceiver), new IntentFilter(MeshService.MESH_RESULT));
+    }
 
-
+    @Override
+    protected void onStop() {
+        LocalBroadcastManager.getInstance(this).unregisterReceiver(mReceiver);
+        super.onStop();
+    }
+/*
     private Node initializeStartNode(Handler handler) throws Exception {
         Node n = null;
 
-        String[] cmd = { "source /data/mybin/init.sh 1" };
+        String[] cmd = { "source "+Constants.INIT_SCRIPT_PATH+" 1" };
         RunAsRoot(cmd);
         int myContactID = getMyID();
         n = new Node(myContactID); // start myNode with 192.168.2.0.
@@ -201,40 +257,25 @@ public class NetworkInfoActivity extends Activity implements HandlerActivity {
         Utils.sendHandlerMsg(handler, Constants.STATUS_MSG_CODE, "mesh service OFF");
         return n;
 
-    }
-
+    }*/
+/*
     private void startManagers(Node n, int myContactID, boolean activeOutLink){
         mFreeIPManager = new FreeIPManager(n);
         mOutLinkManager = new OutLinkManager(activeOutLink, n, myContactID, handler, this);
         mContactManager = new ContactManager(n);
         mObs = new AODVObserver(n, myContactID, mThis, mOutLinkManager, mContactManager, mFreeIPManager);
         mOutLinkManager.setAODVObserver(mObs);
-    }
-
-    public void RunAsRoot(String[] cmds) throws IOException {
-        Process p = Runtime.getRuntime().exec("su");
-        OutputStream os = p.getOutputStream();// stdin
-        InputStream is = p.getInputStream();// stdout
-        for (String tmpCmd : cmds) {
-            os.write((tmpCmd + "\n").getBytes());
-            os.flush();
-        }
-        try {
-            Thread.sleep(1600);// wait a bit so the script has time to run
-        } catch (InterruptedException e) {
-            e.printStackTrace();
-        }
-    }
-
+    }*/
 
     @Override
     public void onDestroy() {
         super.onDestroy();
+        /*
         if (!meshIsOn() && (myNode != null)) {
             myNode.stopThread();
             myNode.unBind();
             myNode = null;
-        }
+        }*/
     }
 
 

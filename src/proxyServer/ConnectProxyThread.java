@@ -10,6 +10,7 @@ import java.util.Observer;
 
 import adhoc.aodv.Node;
 import android.os.Handler;
+import android.support.v4.content.LocalBroadcastManager;
 import android.util.Base64;
 import android.util.Log;
 
@@ -36,14 +37,14 @@ public class ConnectProxyThread extends Thread implements MeshMsgReceiver {
     private int Destination;
     private Node myNode;
     private int msgCode;
-    private Handler msgHandler;
+    private LocalBroadcastManager msgBroadcaster;
     private AODVObserver mAodvObserver;
 
     volatile boolean keepListening = true;
 
 
     public ConnectProxyThread(Socket s, Node n, int dest, int bId, boolean isOutLink,
-                              AODVObserver aodvObserver, Handler msgHandler) {
+                              AODVObserver aodvObserver, LocalBroadcastManager msgBroadcaster) {
         socket = s;
         Destination = dest;
         broadcastId = bId;
@@ -56,7 +57,7 @@ public class ConnectProxyThread extends Thread implements MeshMsgReceiver {
         } else {
             msgCode = Constants.TFM_MSG_CODE;
         }
-        this.msgHandler = msgHandler;
+        this.msgBroadcaster = msgBroadcaster;
     }
 
 
@@ -125,7 +126,7 @@ public class ConnectProxyThread extends Thread implements MeshMsgReceiver {
         String tag = "ConnectProxyInfo";// "ConnectProxyThread:sendData";
         byte[] sendData = new byte[length];
         System.arraycopy(data, 0, sendData, 0, sendData.length);
-        Utils.sendTrafficMsg(msgHandler, length, msgCode);
+        Utils.sendUIUpdateMsg(msgBroadcaster, msgCode, Integer.valueOf(length));
         ConnectDataMsg cdm =
             new ConnectDataMsg(myNode.getNodeAddress(), 0, broadcastId, Base64.encode(sendData, 0),
                                isRequesterSide, false);
@@ -194,9 +195,9 @@ public class ConnectProxyThread extends Thread implements MeshMsgReceiver {
                 byte[] d = Base64.decode(cdm.getDataBytes(), 0);
                 try {
                     if (isRequesterSide) {
-                        Utils.sendTrafficMsg(msgHandler, d.length, Constants.TTM_MSG_CODE);
+                        Utils.sendUIUpdateMsg(msgBroadcaster, Constants.TTM_MSG_CODE, Integer.valueOf(d.length));
                     } else {
-                        Utils.sendTrafficMsg(msgHandler, d.length, Constants.TFM_MSG_CODE);
+                        Utils.sendUIUpdateMsg(msgBroadcaster, Constants.TFM_MSG_CODE, Integer.valueOf(d.length));
                     }
                     String dAsString = new String(d, Constants.encoding);
                     Log.d(tag, "writing Connect Data out to target host("

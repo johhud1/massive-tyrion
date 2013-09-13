@@ -9,6 +9,7 @@ import java.util.Arrays;
 import proxyServer.ApacheRequestFactory;
 import adhoc.aodv.Node;
 import android.os.Handler;
+import android.support.v4.content.LocalBroadcastManager;
 import android.util.Base64;
 import android.util.Log;
 import ch.boye.httpclientandroidlib.Header;
@@ -28,7 +29,7 @@ public class HttpFetcher implements Runnable {
     String httpRequest;
     Node mNode;
     int mId;
-    Handler mainActivityMsgHandler;
+    LocalBroadcastManager mainActivityMsgBroadcaster;
     int MAX_PAYLOAD_SIZE = Constants.MAX_PAYLOAD_SIZE;
     int BUFSIZE = 512;
     private HttpClient dhc;
@@ -36,10 +37,10 @@ public class HttpFetcher implements Runnable {
     volatile boolean connectionOpen = true;
 
 
-    public HttpFetcher(String hr, DataMsg msg, Node n, Handler h, HttpClient dhc) {
+    public HttpFetcher(String hr, DataMsg msg, Node n, LocalBroadcastManager msgBroadcaster, HttpClient dhc) {
         httpRequest = hr;
         mNode = n;
-        mainActivityMsgHandler = h;
+        mainActivityMsgBroadcaster = msgBroadcaster;
         mId = mNode.getNodeAddress();
         dmsg = msg;
         this.dhc = dhc;
@@ -166,7 +167,7 @@ public class HttpFetcher implements Runnable {
             return;
         }*/
         Log.d(tag, "sending off packet("+pid+") for requestId:"+dmsg.getBroadcastID()+" ; size: "+limit/1000+"KB");
-        Utils.sendTrafficMsg(mainActivityMsgHandler, limit, Constants.TFM_MSG_CODE);
+        Utils.sendUIUpdateMsg(mainActivityMsgBroadcaster, Constants.TFM_MSG_CODE, Integer.valueOf(limit));
         if (limit == responseBuf.length) {
             DataMsg respData =
                 new DataRepMsg(mId, pid, dmsg.getBroadcastID(),

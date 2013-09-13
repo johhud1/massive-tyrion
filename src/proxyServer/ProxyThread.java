@@ -19,6 +19,7 @@ import adhoc.aodv.Node;
 import android.content.Context;
 import android.os.Handler;
 import android.os.Message;
+import android.support.v4.content.LocalBroadcastManager;
 import android.util.Base64;
 import android.util.Log;
 
@@ -55,7 +56,7 @@ public class ProxyThread extends Thread {
     private int destinationID; // id of node in mesh that will be doing the data
                                // transfer for us
     private int recievedPackets = 0;
-    private Handler msgHandler; // main activity handler (used for sending text
+    private LocalBroadcastManager msgBroadcaster; // broadcaster (used for sending text
                                 // msgs to main thread)
     private ConnectProxyThread mConnectProxyThread;
     private long dbId; // id number of this request in db
@@ -66,22 +67,22 @@ public class ProxyThread extends Thread {
 
 
     public ProxyThread(Socket socket, Node node, AODVObserver aodvObs, int reqNumber,
-                       Handler msgHandler, long id, Context c) {
+                       LocalBroadcastManager msgBroadcaster, long id, Context c) {
         super("ProxyThread");
         this.socket = socket;
         this.node = node;
         // aodvObs.addObserver(this);
         mAodvObs = aodvObs;
         dbId = id;
-        this.msgHandler = msgHandler;
+        this.msgBroadcaster = msgBroadcaster;
         this.broadcastId = reqNumber;
         packetBuf = new DataRepMsg[WINDOW_SIZE];
     }
 
 
     public ProxyThread(Socket accept, Node node2, AODVObserver aodvobs, int reqNumber2,
-                       int getContact, Handler h, long id, Context c) {
-        this(accept, node2, aodvobs, reqNumber2, h, id, c);
+                       int getContact, LocalBroadcastManager msgBroadcaster, long id, Context c) {
+        this(accept, node2, aodvobs, reqNumber2, msgBroadcaster, id, c);
         destinationID = getContact;
     }
 
@@ -121,7 +122,7 @@ public class ProxyThread extends Thread {
             if (isConnectHttpRequest(request)) {
                 ConnectProxyThread cpt =
                     new ConnectProxyThread(socket, node, destinationID, broadcastId, false,
-                                           mAodvObs, msgHandler);
+                                           mAodvObs, msgBroadcaster);
                 mAodvObs.addConnectProxyThread(broadcastId, cpt);
                 cpt.start();
                 DataMsg dreq =
@@ -315,7 +316,8 @@ public class ProxyThread extends Thread {
 
     private void forwardMsgDataToReceiver(DataRepMsg dmsg) throws IOException {
         byte[] outArray = Base64.decode(dmsg.getDataBytes(), 0);
-        Utils.sendTrafficMsg(msgHandler, outArray.length, Constants.TTM_MSG_CODE);
+        Utils.sendUIUpdateMsg(msgBroadcaster,  Constants.TTM_MSG_CODE, Integer.valueOf(outArray.length));
+
         cSize += outArray.length;
         String respMsg = new String(outArray, Constants.encoding);
         out.write(outArray);

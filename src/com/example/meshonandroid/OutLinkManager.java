@@ -17,6 +17,7 @@ import android.net.ConnectivityManager;
 import android.net.NetworkInfo;
 import android.os.Build;
 import android.os.Handler;
+import android.support.v4.content.LocalBroadcastManager;
 import android.util.Base64;
 import android.util.Log;
 import android.util.SparseArray;
@@ -45,7 +46,7 @@ public class OutLinkManager implements MeshMsgReceiver {
 
     private boolean mActiveNode = false;
     private Node mNode;
-    private Handler msgHandler;
+    private LocalBroadcastManager msgBroadcaster;
     private Context mContext;
     private DefaultHttpClient dhc;
     private SparseArray<HttpFetcher> fetcherMap = new SparseArray<HttpFetcher>();
@@ -66,10 +67,10 @@ public class OutLinkManager implements MeshMsgReceiver {
      *
      * @param
      */
-    public OutLinkManager(boolean activeNode, Node node, int myID, Handler msgHandler, Context c) {
+    public OutLinkManager(boolean activeNode, Node node, int myID, LocalBroadcastManager broadcaster, Context c) {
         mNode = node;
         mActiveNode = activeNode;
-        this.msgHandler = msgHandler;
+        this.msgBroadcaster = broadcaster;
         mContext = c;
         dhc = new DefaultHttpClient(new PoolingClientConnectionManager());
         dhc.setRedirectStrategy(new RedirectStrategy() {
@@ -160,7 +161,7 @@ public class OutLinkManager implements MeshMsgReceiver {
         String[] addrPort = getAddrPort(request);
         try {
             Socket targetConn = new Socket(addrPort[0], Integer.parseInt(addrPort[1]));
-            ConnectProxyThread cpt = new ConnectProxyThread(targetConn, mNode, dmsg.getSourceID(), dmsg.getBroadcastID(), true, mAodvObserver, msgHandler);
+            ConnectProxyThread cpt = new ConnectProxyThread(targetConn, mNode, dmsg.getSourceID(), dmsg.getBroadcastID(), true, mAodvObserver, msgBroadcaster);
             mAodvObserver.addConnectProxyThread(dmsg.getBroadcastID(), cpt);
             cpt.start();
             // BufferedInputStream bis = new
@@ -213,7 +214,7 @@ public class OutLinkManager implements MeshMsgReceiver {
                     handleConnectRequest(request, dmsg);
                 } else {
                     HttpFetcher fetcher =
-                        new HttpFetcher(httpRequest, dmsg, mNode, msgHandler, dhc);
+                        new HttpFetcher(httpRequest, dmsg, mNode, msgBroadcaster, dhc);
                     fetcherMap.put(dmsg.getBroadcastID(), fetcher);
                     new Thread(fetcher).start();
                 }
