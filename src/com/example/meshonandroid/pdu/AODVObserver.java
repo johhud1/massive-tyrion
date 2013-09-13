@@ -34,11 +34,9 @@ public class AODVObserver implements Observer {
 
     public AODVObserver(int mId, LocalBroadcastManager broadcaster, OutLinkManager oman, ContactManager cman, FreeIPManager ipman) {
         mOutLinkManager =  oman;
-        //mOutLinkManager.setAODVObserver(this);
         mBroadcaster = broadcaster;
         mContactManager = cman;
         mIPManager = ipman;
-        //this.addObserver(mOutLinkManager);
     }
 
     @Override
@@ -48,7 +46,7 @@ public class AODVObserver implements Observer {
         int userPacketID, destination, type = msg.getMessageType();
         switch (type) {
         case ObserverConst.ROUTE_ESTABLISHMENT_FAILURE:
-            int unreachableDestinationAddrerss  = (Integer)msg.getContainedData();
+            int unreachableDestinationAddress  = (Integer)msg.getContainedData();
             //contactManager.routeEstablishmentFailurRecived(unreachableDestinationAddrerss);
             break;
         case ObserverConst.DATA_RECEIVED:
@@ -57,7 +55,7 @@ public class AODVObserver implements Observer {
             break;
         case ObserverConst.INVALID_DESTINATION_ADDRESS:
             userPacketID = (Integer)msg.getContainedData();
-            //FIXME slet fra timer og Contacts
+            mIPManager.invalidDestinationAddress(userPacketID);
             break;
         case ObserverConst.DATA_SIZE_EXCEEDES_MAX:
             userPacketID = (Integer)msg.getContainedData();
@@ -70,15 +68,13 @@ public class AODVObserver implements Observer {
             break;
         case ObserverConst.ROUTE_CREATED:
             destination = (Integer)msg.getContainedData();
-            //contactManager.routeEstablishedRecived(destination);
+            mIPManager.routeEstablishedRecived(destination);
             break;
         default:
             break;
         }
     }
-    //TODO: refactor this whole thing so I'm not using observers, and just call the methods on the appropriate objects
-            //can keep a list of ProxyThreads perhaps, indexed by requestId for quick dispatch.
-    //IN PROGRESS
+
     private void parseMessage(int senderID, byte[] data){
         String tag = "AODVObserver:parseMessage";
         //setChanged();
@@ -92,23 +88,18 @@ public class AODVObserver implements Observer {
                 System.out.println("Received DataReqMsg: "+dataReqMsg.toReadableString());
                 setMainTextViewWithString("Recieved DataReqMsg. srcID:"+dataReqMsg.srcID + " bId: "+dataReqMsg.getBroadcastID());
                 mOutLinkManager.handleMessage(dataReqMsg);
-                //notifyObservers("recieved PDU_DATAMSG: "+dataMsg.toReadableString());
                 break;
             case Constants.PDU_DATAREPMSG:
                 DataRepMsg dataRepMsg = new DataRepMsg();
                 dataRepMsg.parseBytes(data);
                 setMainTextViewWithString("Recieved DataRepMsg. srcID:"+dataRepMsg.srcID + " bId: "+dataRepMsg.getBroadcastID());
                 System.out.println("Received DataRepMsg: "+dataRepMsg.toReadableString());
-                //TODO: what should happen here is we pick out the proper proxyThread from a sparseArray of
-                //ProxyThreads and call that threads handle message or whatever
                 ProxyThread rThread = proxyThreadArray.get(dataRepMsg.broadcastID);
                 if(rThread != null){
                     rThread.PushPacketOnDataRepQ(dataRepMsg);
                 } else {
                     Log.e(AODVObserver.class.getName()+":DATAREPMSG", "couldn't find the ProxyThread for requestID:"+dataRepMsg.broadcastID+". somehow that ProxyThread got remove, THIS IS BAD");
                 }
-                //notifyObservers(dataRepMsg);
-
                 break;
             case Constants.PDU_DATAMSG:
                 DataMsg dataMsg = new DataMsg();
@@ -134,13 +125,6 @@ public class AODVObserver implements Observer {
                 Log.d(tag, exitRep.toReadableString());
                 //we recieved an exit node reply from a live contact. add this contact to the ContactManager
                 mContactManager.addContact(exitRep);
-                break;
-            case Constants.PDU_IPDISCOVER:
-                System.out.println("Recieved: IPDiscover msg");
-                setMainTextViewWithString("Recieved IPDiscover msg");
-                IPDiscoverMsg ipMsg = new IPDiscoverMsg();
-                ipMsg.parseBytes(data);
-                mIPManager.handleMessage(ipMsg);
                 break;
             case Constants.PDU_CONNECTDATAMSG:
                 System.out.println("Recieved: ConnectData msg");

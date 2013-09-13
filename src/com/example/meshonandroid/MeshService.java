@@ -57,6 +57,7 @@ public class MeshService extends Service {
 
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
+        adhoc.etc.Debug.setDebugStream(System.out);
         new Thread(new Runnable() {
             @Override
             public void run() {
@@ -64,13 +65,14 @@ public class MeshService extends Service {
                     makeForeground();
                     mNode = initializeStartNode();
                     // TODO: find out what's going on here and make a better fix
-                    Thread.sleep(3000);// gotta wait a second for the new node
+                    Thread.sleep(5000);// gotta wait a second for the new node
                                        // to do its' thing. look don't ask
                                        // questions it just works this way
                     mNode = joinMesh(mNode);
                 } catch (Exception e) {
                     e.printStackTrace();
-                    Utils.sendUIUpdateMsg(broadcaster, Constants.STATUS_MSG_CODE, MESH_START_ERROR_MSG);
+                    Utils.sendUIUpdateMsg(broadcaster, Constants.STATUS_MSG_CODE,
+                                          MESH_START_ERROR_MSG);
                 }
             }
         }).start();
@@ -81,12 +83,16 @@ public class MeshService extends Service {
 
     @Override
     public void onDestroy() {
-        mPl.stopListening();
-        mNode.stopThread();
-        mNode.unBind();
-        mNode.deleteObserver(mObs);
-        mNode = null;
-        Utils.sendUIUpdateMsg(broadcaster, Constants.STATUS_MSG_CODE, "mesh service OFF");
+        if (mPl != null) {
+            mPl.stopListening();
+        }
+        if (mNode != null && mObs != null) {
+            mNode.stopThread();
+            mNode.unBind();
+            mNode.deleteObserver(mObs);
+            mNode = null;
+            Utils.sendUIUpdateMsg(broadcaster, Constants.STATUS_MSG_CODE, "mesh service OFF");
+        }
     }
 
 
@@ -126,15 +132,14 @@ public class MeshService extends Service {
                                                                           + rId);
         } catch (Exception e) {
             e.printStackTrace();
-            Utils.sendUIUpdateMsg(broadcaster, Constants.STATUS_MSG_CODE,
-                                  MESH_START_ERROR_MSG);
+            Utils.sendUIUpdateMsg(broadcaster, Constants.STATUS_MSG_CODE, MESH_START_ERROR_MSG);
         }
         return node;
     }
 
 
     private void startManagers(Node n, int myContactID, boolean activeOutLink) {
-        mFreeIPManager = new FreeIPManager(n);
+        mFreeIPManager = new FreeIPManager();
         mOutLinkManager = new OutLinkManager(activeOutLink, n, myContactID, broadcaster, this);
         mContactManager = new ContactManager(n);
         mObs =
@@ -151,7 +156,8 @@ public class MeshService extends Service {
             new Notification(R.drawable.ic_launcher, getText(R.string.join_mesh_notif),
                              System.currentTimeMillis());
         Intent notificationIntent = new Intent(this, NetworkInfoActivity.class);
-        notificationIntent.setFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP | Intent.FLAG_ACTIVITY_REORDER_TO_FRONT);
+        notificationIntent.setFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP
+                                    | Intent.FLAG_ACTIVITY_REORDER_TO_FRONT);
         PendingIntent pendingIntent = PendingIntent.getActivity(this, 0, notificationIntent, 0);
         notification.setLatestEventInfo(this, "Mesh On Android", "Active", pendingIntent);
 
@@ -168,7 +174,7 @@ public class MeshService extends Service {
             os.flush();
         }
         try {
-            Thread.sleep(1900);// wait a bit so the script has time to run
+            Thread.sleep(2500);// wait a bit so the script has time to run
         } catch (InterruptedException e) {
             e.printStackTrace();
         }

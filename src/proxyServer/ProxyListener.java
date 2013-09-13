@@ -55,7 +55,7 @@ public class ProxyListener extends Thread {
             System.out.println("Started on: " + port + " ServerSocket: " + serverSocket.toString());
         } catch (IOException e) {
             Log.e(ProxyListener.class.getName(), "Could not listen on port: " + port);
-            System.exit(-1);
+            Utils.sendUIUpdateMsg(msgBroadcaster, Constants.STATUS_MSG_CODE, "error joining mesh");
         }
         while (listening) {
             try {

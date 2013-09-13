@@ -124,48 +124,6 @@ public class NetworkInfoActivity extends Activity implements HandlerActivity {
         };
         mCb = (CheckBox) findViewById(R.id.start_service_but);
         mCb.setEnabled(true);
-        /*
-        handler = new Handler() {
-            @Override
-            public void handleMessage(Message msg) {
-                switch (msg.arg1) {
-                case Constants.LOG_MSG_CODE:
-                    TextView tv = (TextView) findViewById(R.id.recvd_message_tv);
-                    setTextView(R.id.recvd_message_tv, tv.getText()
-                                                       + msg.getData().getString("msg") + "\n");
-                    break;
-                case Constants.STATUS_MSG_CODE:
-                    setTextView(R.id.status_tv, msg.getData().getString("msg"));
-                    mCb.setEnabled(true);
-                    break;
-                case Constants.TTM_MSG_CODE: // traffic forwarded through mesh,
-                                            // (on our behalf) ie total data not
-                                            // going through 3g, instead being
-                                            // forwarded through mesh
-                    trafficThroughMesh += (double) msg.arg2 / (double) 1000;
-                    setTextView(R.id.tf_forus_tv, "Data through mesh (KBytes) "
-                                                  + trafficThroughMesh);
-                    break;
-                case Constants.TFM_MSG_CODE: // forwarded traffic that we have
-                                            // acted as the out link for. ie
-                                            // data we have pushed through our
-                                            // 3g modem for the benefit of the
-                                            // mesh
-                    trafficFromMesh += (double) msg.arg2 / (double) 1000;
-                    setTextView(R.id.tf_byus_tv, "Data from mesh (KBytes): " + trafficFromMesh);
-                }
-
-            }
-        };*/
-/*
-        try {
-            myNode = initializeStartNode(handler);
-        } catch (Exception e) {
-            setTextView(R.id.status_tv, "Error initializing Node");
-            e.printStackTrace();
-        }
-*/
-
         setProxy(mWV);
     }
 
@@ -180,54 +138,13 @@ public class NetworkInfoActivity extends Activity implements HandlerActivity {
         switch (view.getId()) {
         case R.id.start_service_but:
             if (checked) {
-                //signalled by recieving msg in this classes msghandler
 
                 // start proxy and mesh service
-
                 startService(meshService);
-                /*
-                new Thread(new Runnable() {
-                    @Override
-                    public void run() {
-                        try {
-                            int rId = mFreeIPManager.getFreeID();
-                            myNode.stopThread();
-                            myNode.unBind();
-                            String cmd = "source "+Constants.INIT_SCRIPT_PATH + " " + rId;
-                            Log.d(tag, "got available address for last ip segment: " + rId
-                                       + ". Cmd string: " + cmd);
-                            RunAsRoot(new String[] { cmd });//
-                            int myContactID = getMyID();
-                            myNode = new Node(myContactID);
-                            myNode.startThread();
-                            startManagers(myNode, myContactID, true);
-                            mPl =
-                                new ProxyListener(getHandler(), 8080, myNode, mContactManager, mObs, mThis);
-                            mPl.start();
-                            Utils.sendHandlerMsg(getHandler(), Constants.STATUS_MSG_CODE, "mesh service ON. ID: "+rId);
-
-                        } catch (Exception e) {
-                            Utils.sendHandlerMsg(getHandler(), Constants.STATUS_MSG_CODE, "error starting mesh service");
-                        }
-                    }
-                }).start();*/
 
             } else {
                 stopService(meshService);
             }
-            /*
-            if(myNode != null && mPl != null){
-                myNode.stopThread();
-                myNode.unBind();
-                mPl.stopListening();
-                try {
-                    myNode = initializeStartNode(handler);
-                } catch (Exception e) {
-                    Utils.sendHandlerMsg(getHandler(), Constants.STATUS_MSG_CODE, "Error stopping and reinitializing node");
-                    e.printStackTrace();
-            } else {
-                mCb.setEnabled(true);
-            }*/
             break;
         }
     }
@@ -242,42 +159,6 @@ public class NetworkInfoActivity extends Activity implements HandlerActivity {
         LocalBroadcastManager.getInstance(this).unregisterReceiver(mReceiver);
         super.onStop();
     }
-/*
-    private Node initializeStartNode(Handler handler) throws Exception {
-        Node n = null;
-
-        String[] cmd = { "source "+Constants.INIT_SCRIPT_PATH+" 1" };
-        RunAsRoot(cmd);
-        int myContactID = getMyID();
-        n = new Node(myContactID); // start myNode with 192.168.2.0.
-                                   // use this node to gather IP info
-                                   // for final ip/ID assignment.
-        n.startThread();
-        startManagers(n, myContactID, false);
-        Utils.sendHandlerMsg(handler, Constants.STATUS_MSG_CODE, "mesh service OFF");
-        return n;
-
-    }*/
-/*
-    private void startManagers(Node n, int myContactID, boolean activeOutLink){
-        mFreeIPManager = new FreeIPManager(n);
-        mOutLinkManager = new OutLinkManager(activeOutLink, n, myContactID, handler, this);
-        mContactManager = new ContactManager(n);
-        mObs = new AODVObserver(n, myContactID, mThis, mOutLinkManager, mContactManager, mFreeIPManager);
-        mOutLinkManager.setAODVObserver(mObs);
-    }*/
-
-    @Override
-    public void onDestroy() {
-        super.onDestroy();
-        /*
-        if (!meshIsOn() && (myNode != null)) {
-            myNode.stopThread();
-            myNode.unBind();
-            myNode = null;
-        }*/
-    }
-
 
     private boolean meshIsOn() { // this is a questionable way to determine if
                                  // the mesh service is on
@@ -300,34 +181,6 @@ public class NetworkInfoActivity extends Activity implements HandlerActivity {
             mWV.loadUrl(mUrl);
         }
 
-    }
-
-
-    public int getMyID() throws Exception {
-        String tag = "NetworkInfoActivity:getMyID";
-        NetworkInterface nif;
-        int myid = -1;
-        try {
-            nif = NetworkInterface.getByName("wlan0");
-            Enumeration<InetAddress> addresses = nif.getInetAddresses();
-            if (addresses.hasMoreElements()) {
-                byte b = addresses.nextElement().getAddress()[3];
-                byte[] ba = new byte[4];
-                ba[3] = b;
-                ByteBuffer bb = ByteBuffer.wrap(ba);
-                myid = bb.getInt(); // THISIS SO AWESOME JAVA DOESN'T HAVE
-                                    // UNSIGNED TYPES!!! thats cool
-                Log.d(tag, "myContactId is fourth ip segment:" + myid);
-            } else {
-                Log.e(tag, "error getInetAddresses returned no addresses");
-                throw new Exception("getMyID exception: no associated IP addresses found");
-            }
-
-            return myid;
-        } catch (SocketException e) {
-            e.printStackTrace();
-            return -1;
-        }
     }
 
 
