@@ -33,7 +33,7 @@ public class PerfDBHelper extends SQLiteOpenHelper {
                                                   + COLUMN_CONTENT_SIZE + CS_VAR_TYPE
                                                   + COLUMN_RES_HOST + " text,"
                                                   + COLUMN_RES + " text,"
-                                                  + COLUMN_NODE_ID + " text,"
+                                                  + COLUMN_NODE_ID + " text"
                                                   + ");";
 
     /**

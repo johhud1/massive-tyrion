@@ -209,117 +209,11 @@ public class ProxyThread extends Thread {
         dataRepQ.add(msg);
     }
 
-/*
-    @Override
-    public void update(Observable observable, Object data) {
-        String tag = "ProxyThread:update";
-        MeshPduInterface msg = (MeshPduInterface) data;;
-        // check if this msg is for this ProxyThread
-        // (multiple threads, one for each http request, so multiple outstanding
-        // DataResps)
-        // broadcastID acts as identifier
-        if (checkIDNumber(msg.getBroadcastID())) {
-            try {
-                Log.d(tag, "BroadcastID match; got msg: " + msg.toReadableString());
-            } catch (UnsupportedEncodingException e1) {
-                e1.printStackTrace();
-            }
-            switch (msg.getPduType()) {
-            case Constants.PDU_DATAREPMSG:
-                Log.d(tag, "got pdu_datamsg");
-                DataRepMsg dmsg = (DataRepMsg) msg;
-
-                packetBuf[(dmsg.getPacketID() % WINDOW_SIZE)] = dmsg;
-                // decoded
-                // b64 bytes
-                try {
-                    if (recievedPackets == dmsg.getPacketID()) {
-                        forwardMsgDataToReceiver(dmsg);
-                    } else {
-                        // we got a packet out of order, write out anything that
-                        // we can
-                        // ie anything after index recievedPackets
-                        Log.e(ProxyThread.class.getName(),
-                              "packet recieved out of order. very untested code; check everythings working properly");
-                        int index = recievedPackets % WINDOW_SIZE;
-                        while (packetBuf[index] != null
-                               && isMoreRecent(packetBuf[(recievedPackets + 1) % WINDOW_SIZE],
-                                               packetBuf[index])) {
-                            forwardMsgDataToReceiver(packetBuf[index]);
-                            // sendTrafficForwardedMsg(outArray.length);
-                            // Utils.sendTrafficMsg(msgHandler, outArray.length,
-                            // Constants.TF_MSG_CODE);
-                            index = recievedPackets % WINDOW_SIZE;
-                        }
-
-                    }
-                } catch (Exception e) {
-                    // local browser may have closed connection because stream's
-                    // no longer used
-                    // or something worse may have happened. In either case send
-                    // a connectionKill message to the appropriate node
-                    Log.e(ProxyThread.class.getName(), "exception " + e);
-                    // mAodvObs.deleteObserver(this);
-                    node.sendData(0, destinationID, new ConnectionClosedMsg(node.getNodeAddress(),
-                                                                            0, broadcastId)
-                        .toBytes());
-                    // we're not gonna get a 'last packet' in this case, so just
-                    // set the contentsize and endtime now
-                    LoggingDBUtils.setRequestEndTimeAndContentSize(dbId,
-                                                                   System.currentTimeMillis(),
-                                                                   cSize);
-                }
-
-                break;
-            case Constants.PDU_EXITNODEREP:
-                break;
-            case Constants.PDU_EXITNODEREQ:
-                Log.d(tag, "got PDU_EXITNODEREQ");
-                // do nothing
-                break;
-            case Constants.PDU_DATAMSG:
-                Log.d(tag, "got PDU_DATAMSG");
-                break;
-            case Constants.PDU_CONNECTDATAMSG:
-                Log.d(tag, "got PDU_CONNECTDATAMSG");
-                ConnectDataMsg cdm = (ConnectDataMsg) msg;
-                if (!cdm.isReq() && cdm.isConnectionSetupMsg()) {
-                    // initial response from outlink, after recieving a
-                    // CONNECTION method dataReqMsg (should be
-                    // "OK 200 Connection Established")
-                    // here we setup ConnectionProxy thread, which will run,
-                    // reading from the socket, and buffering the stream into
-                    // ConnectDataMsg's
-                    new ConnectProxyThread(socket, node, cdm, false, mAodvObs, msgHandler).start();
-                    byte[] b = Base64.decode(cdm.getDataBytes(), 0);
-                    try {
-                        String debug = new String(b, Constants.encoding);
-                        out.write(b);
-                    } catch (IOException e) {
-                        e.printStackTrace();
-                    }
-                }
-                break;
-            default:
-                Log.d(tag, "default switch");
-            }
-        } else {
-            // broadcast ID doesn't match our own, packet must be for different
-            // request/proxythread
-            //
-            // Log.d(tag, "BroadcastId doesn't match. Ours:" + broadcastId +
-             // " found:" + msg.getBroadcastID());
-             //
-        }
-    }
-*/
-
     private void forwardMsgDataToReceiver(DataRepMsg dmsg) throws IOException {
         byte[] outArray = Base64.decode(dmsg.getDataBytes(), 0);
         Utils.sendUIUpdateMsg(msgBroadcaster,  Constants.TTM_MSG_CODE, Integer.valueOf(outArray.length));
 
         cSize += outArray.length;
-        String respMsg = new String(outArray, Constants.encoding);
         out.write(outArray);
         out.flush();
         if (socket != null && !dmsg.getAreMorePackets()) {
@@ -328,12 +222,6 @@ public class ProxyThread extends Thread {
             // aodv
             // observer
             stopProxyThread();
-            /*
-            mAodvObs.removeProxyThread(broadcastId);
-            LoggingDBUtils.setRequestEndTimeAndContentSize(dbId, System.currentTimeMillis(), cSize);
-            socket.close();
-            Log.d(ProxyThread.class.getName(), "closing thread for bId: "+broadcastId+ " resource: " + httpRequest.split(" ")[1]);
-            expectingMorePackets = false;*/
         }
         recievedPackets++;
     }

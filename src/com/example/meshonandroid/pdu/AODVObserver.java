@@ -106,7 +106,7 @@ public class AODVObserver implements Observer {
                 dataMsg.parseBytes(data);
                 System.out.println("Received DataMsg: "+dataMsg.toReadableString());
                 setMainTextViewWithString("Got DataMsg");
-                //TODO: don't think anything happens in this case
+                //don't think anything happens in this case
                 break;
             case Constants.PDU_EXITNODEREQ:
                 System.out.println("Received: Exit Node Request msg");
@@ -114,7 +114,6 @@ public class AODVObserver implements Observer {
                 ExitNodeReqPDU exitMsg = new ExitNodeReqPDU();
                 exitMsg.parseBytes(data);
                 Log.d(tag, exitMsg.toReadableString());
-                //notifyObservers(exitMsg);
                 mOutLinkManager.connectionRequested(senderID, exitMsg); //sets up neccessary state and send reply;
                 break;
             case Constants.PDU_EXITNODEREP:
