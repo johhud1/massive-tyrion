@@ -60,9 +60,9 @@ public class ProxyListener extends Thread {
         while (listening) {
             try {
                 Socket s = serverSocket.accept();
-                long id = LoggingDBUtils.addRequest(System.currentTimeMillis());
                 int reqNumber = getReqNumber();
                 int c = contactManager.GetContact(reqNumber);
+                long id = LoggingDBUtils.addRequest(System.currentTimeMillis(), c);
                 Log.d(tag, "contactManager.GetContact() returned contact:" + c);
                 //TODO: implement code for using my own modem sometimes.
                 ProxyThread pt = new ProxyThread(s, node, aodvobs, reqNumber, c, msgBroadcaster, id, mContext);

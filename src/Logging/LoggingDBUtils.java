@@ -8,7 +8,7 @@ public class LoggingDBUtils {
     public static void setRequestEndTimeAndContentSize(long Id, long endTime, int cs){
         mDBHelper.setRequest(Id, endTime, cs);
     }
-    public static long addRequest(long startTime){
-        return mDBHelper.addRequest(startTime);
+    public static long addRequest(long startTime, int id){
+        return mDBHelper.addRequest(startTime, id);
     }
 }

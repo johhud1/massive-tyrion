@@ -1,19 +1,11 @@
 package Logging;
 
-import java.io.File;
-import java.io.FileWriter;
-import java.io.IOException;
 import java.util.Date;
 
 import android.content.ContentValues;
 import android.content.Context;
-import android.database.Cursor;
-import android.database.CursorIndexOutOfBoundsException;
-import android.database.sqlite.SQLiteCursorDriver;
 import android.database.sqlite.SQLiteDatabase;
 import android.database.sqlite.SQLiteOpenHelper;
-import android.database.sqlite.SQLiteQuery;
-import android.database.sqlite.SQLiteDatabase.CursorFactory;
 import android.util.Log;
 
 
@@ -28,6 +20,7 @@ public class PerfDBHelper extends SQLiteOpenHelper {
     private static final String COLUMN_CONTENT_SIZE = " cs";
     private static final String COLUMN_RES = " resource";
     private static final String COLUMN_RES_HOST = "reshost";
+    private static final String COLUMN_NODE_ID = "nid";
     private static final String TIME_VAR_TYPE = " INTEGER,";
     private static final String CS_VAR_TYPE = " INTEGER,";
 
@@ -39,11 +32,22 @@ public class PerfDBHelper extends SQLiteOpenHelper {
                                                   + COLUMN_END_TIME + TIME_VAR_TYPE
                                                   + COLUMN_CONTENT_SIZE + CS_VAR_TYPE
                                                   + COLUMN_RES_HOST + " text,"
-                                                  + COLUMN_RES + " text"
+                                                  + COLUMN_RES + " text,"
+                                                  + COLUMN_NODE_ID + " text,"
                                                   + ");";
 
-
-    //private SQLiteDatabase db;
+    /**
+     * This DBHelper class handles storing the logging info in an sqlite3 DB. Each row stores info for a HTTP request
+     * The columns are as follows:
+     * COLUMN_ID - integer, primary key for entries.
+     * COLUMN_START_TIME - integer, the request start time
+     * COLUMN_END_TIME - integer, the request end time
+     * COLUMN_CONTENT_SIZE - integer, request content size
+     * COLUMN_RES_HOST - text, the host of the requested resource
+     * COLUMN_RES - text, the resource url
+     * COLUMN_NODE_ID - text, the node ID that is performing the request fetch
+     * @param c
+     */
     public PerfDBHelper(Context c) {
         // change name to null for in mem db
         super(c, "MOA_DB_" + (new Date().toLocaleString()), null, version);
@@ -65,10 +69,11 @@ public class PerfDBHelper extends SQLiteOpenHelper {
         onCreate(db);
     }
 
-    synchronized long addRequest(long start){
+    synchronized long addRequest(long start, int nodeID){
         SQLiteDatabase db = this.getWritableDatabase();
         ContentValues cv = new ContentValues();
         cv.put(COLUMN_START_TIME, start);
+        cv.put(COLUMN_NODE_ID, nodeID);
         long id = db.insert(TABLE_REQUESTS, null, cv);
         Log.d(PerfDBHelper.class.getName(), "added request with dbId: "+id);
         if(id == -1){
