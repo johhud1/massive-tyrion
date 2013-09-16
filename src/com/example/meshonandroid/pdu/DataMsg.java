@@ -6,6 +6,8 @@ import adhoc.aodv.exception.BadPduFormatException;
 
 import com.example.meshonandroid.Constants;
 
+
+
 public class DataMsg implements MeshPduInterface {
 
     protected byte type;
@@ -15,7 +17,10 @@ public class DataMsg implements MeshPduInterface {
     protected byte[] data;
     protected boolean areMorePackets;
 
-    public DataMsg(){};
+
+    public DataMsg() {};
+
+
     /**
      * Constructor for creating a data message request PDU
      *
@@ -27,10 +32,12 @@ public class DataMsg implements MeshPduInterface {
      *            along with the source address this number uniquely identifies
      *            this route request PDU
      * @param areMorePackets
-     *          field indicating how many packets the data had to be split into
+     *            field indicating how many packets the data had to be split
+     *            into
      *
      */
-    public DataMsg(int srcId, int packetID, int broadcastId, byte type, byte[] data, boolean areMorePackets) {
+    public DataMsg(int srcId, int packetID, int broadcastId, byte type, byte[] data,
+                   boolean areMorePackets) {
         this.srcID = srcId;
         this.packetID = packetID;
         this.type = type;
@@ -39,11 +46,13 @@ public class DataMsg implements MeshPduInterface {
         this.areMorePackets = areMorePackets;
     }
 
-    public DataMsg(int srcId, int packetID, int broadcastId, byte type, byte[] data){
+
+    public DataMsg(int srcId, int packetID, int broadcastId, byte type, byte[] data) {
         this(srcId, packetID, broadcastId, type, data, false);
     }
 
-    public String toReadableString(){
+
+    public String toReadableString() {
         return "type:" + type + "; srcID:" + srcID + "; broadcastID:" + broadcastID + "; packetID:"
                + packetID;// + "; data:"+new String(data, Constants.encoding);
     }
@@ -52,18 +61,29 @@ public class DataMsg implements MeshPduInterface {
     @Override
     public String toString() {
         try {
-            return type + ";" + srcID + ";" + broadcastID + ";" + packetID + ";" + areMorePackets + ";" + new String(data, Constants.encoding);
+            int t = (int) type;
+            String ret;
+            ret = new StringBuilder().append(t).append(';').append(srcID).append(';').append(broadcastID)
+                .append(';').append(packetID).append(';').append(areMorePackets).append(';')
+                .append(new String(data, Constants.encoding)).toString();
+            return ret;
         } catch (UnsupportedEncodingException e) {
+            // TODO Auto-generated catch block
             e.printStackTrace();
-            return "error encoding string";
+            return "error encoding DataReqMsg";
         }
+
+        // return type + ";" + srcID + ";" + broadcastID + ";" + packetID + ";"
+        // + areMorePackets + ";" + new String(data, Constants.encoding);
+
     }
 
 
     @Override
     public byte[] toBytes() throws UnsupportedEncodingException {
         byte[] bytes = this.toString().getBytes(Constants.encoding);
-        //Log.d("toBytes", "toBytes returning: "+new String(bytes, Constants.encoding));
+        // Log.d("toBytes", "toBytes returning: "+new String(bytes,
+        // Constants.encoding));
         return bytes;
     }
 
@@ -90,7 +110,7 @@ public class DataMsg implements MeshPduInterface {
             packetID = Integer.parseInt(s[3]);
             areMorePackets = Boolean.parseBoolean(s[4]);
             data = s[5].getBytes(Constants.encoding);
-            //Log.d(tag, "parsed bytes to DataMsg: "+this.toReadableString());
+            // Log.d(tag, "parsed bytes to DataMsg: "+this.toReadableString());
         } catch (NumberFormatException e) {
             throw new BadPduFormatException(
                                             "RREQ: falied in parsing arguments to the desired types");
@@ -99,37 +119,45 @@ public class DataMsg implements MeshPduInterface {
         }
     }
 
-    public byte[] getDataBytes(){
+
+    public byte[] getDataBytes() {
         return data;
     }
 
-    public void setDataBytes(byte[] b){
+
+    public void setDataBytes(byte[] b) {
         data = b;
     }
+
 
     @Override
     public byte getPduType() {
         return type;
     }
 
-    public int getBroadcastID(){
+
+    public int getBroadcastID() {
         return broadcastID;
     }
+
 
     public int getPacketID() {
         return packetID;
     }
+
 
     @Override
     public int getSourceID() {
         return this.srcID;
     }
 
+
     public void setPacketID(int id) {
         packetID = id;
     }
 
-    public boolean getAreMorePackets(){
+
+    public boolean getAreMorePackets() {
         return areMorePackets;
     }
 }
