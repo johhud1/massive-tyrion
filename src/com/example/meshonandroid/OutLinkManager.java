@@ -27,8 +27,11 @@ import ch.boye.httpclientandroidlib.HttpResponse;
 import ch.boye.httpclientandroidlib.ProtocolException;
 import ch.boye.httpclientandroidlib.client.RedirectStrategy;
 import ch.boye.httpclientandroidlib.client.methods.HttpUriRequest;
+import ch.boye.httpclientandroidlib.conn.ClientConnectionManager;
+import ch.boye.httpclientandroidlib.conn.routing.HttpRoute;
 import ch.boye.httpclientandroidlib.impl.client.DefaultHttpClient;
 import ch.boye.httpclientandroidlib.impl.conn.PoolingClientConnectionManager;
+import ch.boye.httpclientandroidlib.pool.ConnPoolControl;
 import ch.boye.httpclientandroidlib.protocol.HttpContext;
 
 import com.example.meshonandroid.pdu.AODVObserver;
@@ -72,7 +75,10 @@ public class OutLinkManager implements MeshMsgReceiver {
         mActiveNode = activeNode;
         this.msgBroadcaster = broadcaster;
         mContext = c;
-        dhc = new DefaultHttpClient(new PoolingClientConnectionManager());
+        PoolingClientConnectionManager pccm = new PoolingClientConnectionManager();
+        pccm.setMaxTotal(150);
+        pccm.setDefaultMaxPerRoute(50);
+        dhc = new DefaultHttpClient(pccm);
         dhc.setRedirectStrategy(new RedirectStrategy() {
 
             @Override

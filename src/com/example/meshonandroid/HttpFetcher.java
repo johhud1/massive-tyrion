@@ -54,6 +54,7 @@ public class HttpFetcher implements Runnable {
         try {
             // create httpRequest from string representation
             HttpRequest rq = ApacheRequestFactory.create(httpRequest);
+            rq.setHeader("Connection", "keep-alive");
             ByteArrayOutputStream out = new ByteArrayOutputStream();
 
             // execute requested http request
