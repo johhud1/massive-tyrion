@@ -96,7 +96,8 @@ public class AODVObserver implements Observer {
                 System.out.println("Received DataRepMsg: "+dataRepMsg.toReadableString());
                 ProxyThread rThread = proxyThreadArray.get(dataRepMsg.broadcastID);
                 if(rThread != null){
-                    rThread.PushPacketOnDataRepQ(dataRepMsg);
+                    rThread.handleMessage(dataRepMsg);
+                    //rThread.PushPacketOnDataRepQ(dataRepMsg);
                 } else {
                     Log.e(AODVObserver.class.getName()+":DATAREPMSG", "couldn't find the ProxyThread for requestID:"+dataRepMsg.broadcastID+". somehow that ProxyThread got remove, THIS IS BAD");
                 }

@@ -152,6 +152,7 @@ public class ProxyThread extends Thread {
         }
         // receive packets and forward them to the local user until we don't
         // expect anymore
+        /* uncomment this block for more threads -- also get rid of handlemessage and change AODVObserver DataRepMsg switch case back
         while (expectingMorePackets) {
             DataRepMsg rep = null;
             try {
@@ -177,9 +178,26 @@ public class ProxyThread extends Thread {
                     stopProxyThread();
                 }
             }
+        }*/
+    }
+    public void handleMessage(DataRepMsg rep){
+        Log.d(ProxyThread.class.getName(), "got pdu_datamsg");
+        try {
+            forwardMsgDataToReceiver(rep);
+        } catch (IOException e) {
+            // local browser may have closed connection because stream's
+            // no longer used
+            // or something worse may have happened. In either case send
+            // a connectionKill message to the appropriate node so it
+            // stops its HTTPFetcher thread
+            e.printStackTrace();
+            // mAodvObs.deleteObserver(this);
+            node.sendData(0, destinationID, new ConnectionClosedMsg(node.getNodeAddress(),
+                                                                    0, broadcastId)
+                .toBytes());
+            stopProxyThread();
         }
     }
-
 
     private boolean isConnectHttpRequest(String[] request) {
         if ("CONNECT".equalsIgnoreCase(request[0])) { return true; }
