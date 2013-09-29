@@ -8,7 +8,7 @@ steps to configure Galaxy Nexus for MOA:
 1. revert to stock 4.0.2 build ICL53F
 2. root
 3. download and flash 'myupdate-galaxynexus.zip' kindly made publicly available at https://github.com/monk-dot/SPAN/tree/master/kernels/Samsung%20Galaxy%20Nexus
-4. mkdir /data/mybin and cp he included 'iwconfig' and 'init.sh' files
+4. adb shell into the phone and mkdir /data/mybin and cp he included 'iwconfig' and 'init.sh' files
 5. chmod 0777 iwconfig and init.sh
 6. install MeshOnAndroid and enjoy!
 
