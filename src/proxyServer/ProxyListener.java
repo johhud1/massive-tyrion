@@ -6,6 +6,12 @@ import java.net.InetAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
 
+import meshonandroid.Constants;
+import meshonandroid.ContactManager;
+import meshonandroid.Utils;
+import meshonandroid.ContactManager.NoContactsAvailableException;
+import meshonandroid.pdu.AODVObserver;
+
 import Logging.LoggingDBUtils;
 import Logging.PerfDBHelper;
 import adhoc.aodv.Node;
@@ -14,11 +20,6 @@ import android.os.Handler;
 import android.support.v4.content.LocalBroadcastManager;
 import android.util.Log;
 
-import com.example.meshonandroid.Constants;
-import com.example.meshonandroid.ContactManager;
-import com.example.meshonandroid.ContactManager.NoContactsAvailableException;
-import com.example.meshonandroid.Utils;
-import com.example.meshonandroid.pdu.AODVObserver;
 
 
 

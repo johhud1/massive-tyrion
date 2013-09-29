@@ -16,7 +16,7 @@
         android:label="@string/app_name"
         android:theme="@style/AppTheme" >
         <activity
-            android:name="com.example.meshonandroid.TabHostActivity"
+            android:name="meshonandroid.TabHostActivity"
             android:label="@string/app_name" >
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
@@ -25,12 +25,12 @@
             </intent-filter>
         </activity>
         <activity
-            android:name="com.example.meshonandroid.MainPrefActivity"
+            android:name="meshonandroid.MainPrefActivity"
             />
         <activity
-            android:name="com.example.meshonandroid.NetworkInfoActivity">
+            android:name="meshonandroid.NetworkInfoActivity">
         </activity>
-        <service android:name=".MeshService"></service>
+        <service android:name="meshonandroid.MeshService"></service>
     </application>
 
 
