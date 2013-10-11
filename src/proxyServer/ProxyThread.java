@@ -8,13 +8,7 @@ import java.io.UnsupportedEncodingException;
 import java.net.Socket;
 import java.util.Observable;
 import java.util.Observer;
-<<<<<<< HEAD
 
-import Logging.LoggingDBUtils;
-import adhoc.aodv.Node;
-import android.content.Context;
-import android.os.Handler;
-=======
 import java.util.StringTokenizer;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.LinkedBlockingQueue;
@@ -38,7 +32,6 @@ import android.content.Context;
 import android.os.Handler;
 import android.os.Message;
 import android.support.v4.content.LocalBroadcastManager;
->>>>>>> more-threads
 import android.util.Base64;
 import android.util.Log;
 
@@ -65,11 +58,8 @@ public class ProxyThread extends Thread {
     private int destinationID; // id of node in mesh that will be doing the data
                                // transfer for us
     private int recievedPackets = 0;
-<<<<<<< HEAD
-    private Handler msgHandler; // main activity handler (used for sending text
-=======
+
     private LocalBroadcastManager msgBroadcaster; // broadcaster (used for sending text
->>>>>>> more-threads
                                 // msgs to main thread)
     private ConnectProxyThread mConnectProxyThread;
     private long dbId; // id number of this request in db
@@ -289,12 +279,6 @@ public class ProxyThread extends Thread {
         }
     }
 
-<<<<<<< HEAD
-
-    private void handleOutArray(byte[] outArray, DataRepMsg dmsg) throws IOException {
-        // sendTrafficForwardedMsg(outArray.length);
-        Utils.sendTrafficMsg(msgHandler, outArray.length, Constants.TTM_MSG_CODE);
-=======
     private boolean isConnectHttpRequest(String[] request) {
         if ("CONNECT".equalsIgnoreCase(request[0])) { return true; }
         return false;
@@ -327,7 +311,6 @@ public class ProxyThread extends Thread {
         byte[] outArray = Base64.decode(dmsg.getDataBytes(), 0);
         Utils.sendUIUpdateMsg(msgBroadcaster,  Constants.TTM_MSG_CODE, Integer.valueOf(outArray.length));
 
->>>>>>> more-threads
         cSize += outArray.length;
         out.write(outArray);
         out.flush();
