@@ -46,7 +46,7 @@ import ch.boye.httpclientandroidlib.protocol.HttpContext;
 
 
 @TargetApi(Build.VERSION_CODES.GINGERBREAD)
-public class OutLinkManager implements MeshMsgReceiver {
+public class OutLinkManager implements MeshMsgReceiver, Observer {
 
     private boolean mActiveNode = false;
     private Node mNode;
@@ -126,6 +126,51 @@ public class OutLinkManager implements MeshMsgReceiver {
     private void setupForwardingConn(int reqContactId, MeshPduInterface msg) {
         ExitNodeRepPDU rep = new ExitNodeRepPDU(mNode.getNodeAddress(), 0, msg.getBroadcastID());
         mNode.sendData(0, reqContactId, rep.toBytes());
+
+    }
+
+
+    @Override
+    public void update(Observable arg0, Object m) {
+        String tag = "OutLinkManager:update";
+        MeshPduInterface msg = (MeshPduInterface) m;
+        Log.d(tag, "got update. msg: " + msg.toReadableString());
+        switch (msg.getPduType()) {
+        case Constants.PDU_DATAREQMSG:
+            DataMsg dmsg = (DataMsg) msg;
+            //int pid = dmsg.getPacketID();
+            // decode the http request
+            String httpRequest;
+            try {
+                httpRequest = new String(Base64.decode(dmsg.getDataBytes(), 0), Constants.encoding);
+                Log.d(tag, "got PDU_DATAREQMSG: " + httpRequest);
+                // CONNECT methods cause an HttpException in the
+                // ApacheRequestFactory
+                // catch that, and if that was the cause of exception, handle
+                // appropriately.
+                String[] request = httpRequest.split(" ");
+                if (isConnectHttpRequest(request)) {
+                    handleConnectRequest(request, dmsg);
+                } else {
+                        HttpFetcher fetcher = new HttpFetcher(httpRequest, dmsg, mNode, msgBroadcaster, dhc);
+                        fetcherMap.put(dmsg.getBroadcastID(), fetcher);
+                        new Thread(fetcher).start();
+                }
+            } catch (UnsupportedEncodingException e4) {
+                e4.printStackTrace();
+            }
+            break;
+        case Constants.PDU_CONNECTIONCLOSEMSG:
+            ConnectionClosedMsg CCMsg = (ConnectionClosedMsg) msg;
+            Log.d(OutLinkManager.class.getName(), "closing connection. broadcastId: "+CCMsg.getBroadcastID());
+            HttpFetcher toClose = fetcherMap.get(CCMsg.getBroadcastID());
+            toClose.connectionOpen = false;
+            fetcherMap.remove(CCMsg.getBroadcastID());
+            break;
+        case Constants.PDU_CONNECTDATAMSG:
+            break;
+        default:
+        }
 
     }
 

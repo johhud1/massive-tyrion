@@ -32,8 +32,8 @@ public class WifiScannerThread extends Thread{
         WifiManager mainWifi = (WifiManager) c.getSystemService(Context.WIFI_SERVICE);
         receiver = new WifiScannerReceiver(mainWifi);
         if(!mainWifi.isWifiEnabled()){
-            Log.d(WifiScannerThread.class.getName(), " wifi disabled. Enabling...");
-            mainWifi.setWifiEnabled(true);
+            Log.d(WifiScannerThread.class.getName(), " wifi disabled. scans will not work...");
+            //mainWifi.setWifiEnabled(true); //if you enable wifi, seems to make the mesh not work.. :(
         }
         c.registerReceiver(receiver, new IntentFilter(WifiManager.SCAN_RESULTS_AVAILABLE_ACTION));
         //c.sendBroadcast(new Intent(WifiManager.SCAN_RESULTS_AVAILABLE_ACTION));
