@@ -46,7 +46,7 @@ import ch.boye.httpclientandroidlib.protocol.HttpContext;
 
 
 @TargetApi(Build.VERSION_CODES.GINGERBREAD)
-public class OutLinkManager implements MeshMsgReceiver {
+public class OutLinkManager implements MeshMsgReceiver, Observer {
 
     private boolean mActiveNode = false;
     private Node mNode;
@@ -129,18 +129,12 @@ public class OutLinkManager implements MeshMsgReceiver {
 
     }
 
-
-<<<<<<< HEAD:src/com/example/meshonandroid/OutLinkManager.java
     @Override
     public void update(Observable arg0, Object m) {
         String tag = "OutLinkManager:update";
         MeshPduInterface msg = (MeshPduInterface) m;
-        try {
-            Log.d(tag, "got update. msg: " + msg.toReadableString());
-        } catch (UnsupportedEncodingException e) {
-            // TODO Auto-generated catch block
-            e.printStackTrace();
-        }
+        Log.d(tag, "got update. msg: " + msg.toReadableString());
+
         switch (msg.getPduType()) {
         case Constants.PDU_DATAREQMSG:
             DataMsg dmsg = (DataMsg) msg;
@@ -158,7 +152,7 @@ public class OutLinkManager implements MeshMsgReceiver {
                 if (isConnectHttpRequest(request)) {
                     handleConnectRequest(request, dmsg);
                 } else {
-                        HttpFetcher fetcher = new HttpFetcher(httpRequest, dmsg, mNode, msgHandler, dhc);
+                        HttpFetcher fetcher = new HttpFetcher(httpRequest, dmsg, mNode, msgBroadcaster, dhc);
                         fetcherMap.put(dmsg.getBroadcastID(), fetcher);
                         new Thread(fetcher).start();
                 }
@@ -177,10 +171,8 @@ public class OutLinkManager implements MeshMsgReceiver {
             break;
         default:
         }
-
     }
 
-=======
     /*
      * @Override public void update(Observable arg0, Object m) { String tag =
      * "OutLinkManager:update"; MeshPduInterface msg = (MeshPduInterface) m; try
@@ -206,7 +198,7 @@ public class OutLinkManager implements MeshMsgReceiver {
      *
      * }
      */
->>>>>>> more-threads:src/edu/android/meshonandroid/OutLinkManager.java
+
 
     private boolean isConnectHttpRequest(String[] request) {
         if ("CONNECT".equalsIgnoreCase(request[0])) { return true; }
