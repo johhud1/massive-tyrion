@@ -6,18 +6,22 @@ import java.net.InetAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
 
-import Logging.LoggingDBUtils;
-import Logging.PerfDBHelper;
+import edu.android.meshonandroid.Constants;
+import edu.android.meshonandroid.ContactManager;
+import edu.android.meshonandroid.Utils;
+import edu.android.meshonandroid.ContactManager.NoContactsAvailableException;
+
+import meshonandroid.logging.LoggingDBUtils;
+import meshonandroid.logging.PerfDBHelper;
+import meshonandroid.logging.WifiScannerThread;
+import meshonandroid.pdu.AODVObserver;
+
 import adhoc.aodv.Node;
 import android.content.Context;
 import android.os.Handler;
+import android.support.v4.content.LocalBroadcastManager;
 import android.util.Log;
 
-import com.example.meshonandroid.Constants;
-import com.example.meshonandroid.ContactManager;
-import com.example.meshonandroid.ContactManager.NoContactsAvailableException;
-import com.example.meshonandroid.Utils;
-import com.example.meshonandroid.pdu.AODVObserver;
 
 
 
@@ -27,21 +31,20 @@ public class ProxyListener extends Thread {
     private ServerSocket serverSocket = null;
     private boolean listening = true;
     private ContactManager contactManager;
-    private Handler msgHandler;
+    private LocalBroadcastManager msgBroadcaster;
     int port = 8080; // default
     Node node;
     AODVObserver aodvobs;
     Context mContext;
 
-    public ProxyListener(Handler msgHandler, int port, Node node, AODVObserver aodvobs, Context c) {
+    public ProxyListener(LocalBroadcastManager broadcaster, int port, Node node, ContactManager cman, AODVObserver aodvobs, Context c) {
         super();
         this.port = port;
         this.node = node;
         this.aodvobs = aodvobs;
-        contactManager = new ContactManager(node);
-        aodvobs.addObserver(contactManager);
+        contactManager = cman;
         reqNumber = 0;
-        this.msgHandler = msgHandler;
+        this.msgBroadcaster = broadcaster;
         mContext = c;
     }
 
@@ -55,16 +58,21 @@ public class ProxyListener extends Thread {
             System.out.println("Started on: " + port + " ServerSocket: " + serverSocket.toString());
         } catch (IOException e) {
             Log.e(ProxyListener.class.getName(), "Could not listen on port: " + port);
-            System.exit(-1);
+            Utils.sendUIUpdateMsg(msgBroadcaster, Constants.STATUS_MSG_CODE, "error joining mesh");
         }
+        WifiScannerThread scanThread = new WifiScannerThread(mContext);
+        scanThread.start();
         while (listening) {
             try {
                 Socket s = serverSocket.accept();
-                long id = LoggingDBUtils.addRequest(System.currentTimeMillis());
                 int reqNumber = getReqNumber();
                 int c = contactManager.GetContact(reqNumber);
+                long id = LoggingDBUtils.addRequest(System.currentTimeMillis(), c);
                 Log.d(tag, "contactManager.GetContact() returned contact:" + c);
-                new ProxyThread(s, node, aodvobs, reqNumber, c, msgHandler, id, mContext).start();
+                //TODO: implement code for using my own modem sometimes.
+                ProxyThread pt = new ProxyThread(s, node, aodvobs, reqNumber, c, msgBroadcaster, id, mContext);
+                aodvobs.addProxyThread(reqNumber, pt);
+                pt.start();
             } catch (InterruptedIOException e){
                 continue;
             } catch (IOException e) {
@@ -75,15 +83,15 @@ public class ProxyListener extends Thread {
                     e1.printStackTrace();
                 }
             } catch (NoContactsAvailableException e) {
-                Utils.addMsgToMainTextLog(msgHandler, "No available contacts found in mesh");
+                Utils.sendUIUpdateMsg(msgBroadcaster, Constants.LOG_MSG_CODE, "No available contacts found in mesh");
                 e.printStackTrace();
-            } 
+            }
         }
+        scanThread.stopScanning();
         Log.d(ProxyListener.class.getName(), " shutting down ProxyListener port: " + port + " serverSocket: " + serverSocket.toString());
         try {
             serverSocket.close();
         } catch (IOException e) {
-            // TODO Auto-generated catch block
             e.printStackTrace();
         }
     }

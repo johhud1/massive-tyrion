@@ -1,0 +1,15 @@
+tested on Galaxy Nexus phones running a 4.0.2 build ICL53F. 
+
+MeshOnAndroid (MOA) only works on rooted phones with WEXT (wireless extension) support.
+If you have a rooted phone with a kernel that support WEXT, pls give it a try and let me know how it works.
+ It's only been tested on 4.0.2 ICL53F on galaxy nexi.
+
+steps to configure Galaxy Nexus for MOA:
+1. revert to stock 4.0.2 build ICL53F
+2. root
+3. download and flash 'myupdate-galaxynexus.zip' kindly made publicly available at https://github.com/monk-dot/SPAN/tree/master/kernels/Samsung%20Galaxy%20Nexus
+4. adb shell into the phone and mkdir /data/mybin and cp he included 'iwconfig' and 'init.sh' files
+5. chmod 0777 iwconfig and init.sh
+6. install MeshOnAndroid and enjoy!
+
+For best results you can install ProxyDroid from the android market, to direct all HTTP requests apps on your phone make to MOA.
