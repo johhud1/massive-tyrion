@@ -2,7 +2,8 @@ package meshonandroid.pdu;
 
 import java.io.UnsupportedEncodingException;
 
-import meshonandroid.Constants;
+import edu.android.meshonandroid.Constants;
+
 
 import adhoc.aodv.exception.BadPduFormatException;
 

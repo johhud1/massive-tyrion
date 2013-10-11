@@ -1,4 +1,4 @@
-package Logging;
+package meshonandroid.logging;
 
 public class RequestInfo {
 

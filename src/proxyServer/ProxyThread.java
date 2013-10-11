@@ -13,9 +13,12 @@ import java.util.StringTokenizer;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 
-import meshonandroid.Constants;
-import meshonandroid.OutLinkManager;
-import meshonandroid.Utils;
+import edu.android.meshonandroid.Constants;
+import edu.android.meshonandroid.OutLinkManager;
+import edu.android.meshonandroid.Utils;
+
+import meshonandroid.logging.LoggingDBUtils;
+import meshonandroid.logging.PerfDBHelper;
 import meshonandroid.pdu.AODVObserver;
 import meshonandroid.pdu.ConnectDataMsg;
 import meshonandroid.pdu.ConnectionClosedMsg;
@@ -24,8 +27,6 @@ import meshonandroid.pdu.DataRepMsg;
 import meshonandroid.pdu.DataReqMsg;
 import meshonandroid.pdu.MeshPduInterface;
 
-import Logging.LoggingDBUtils;
-import Logging.PerfDBHelper;
 import adhoc.aodv.Node;
 import android.content.Context;
 import android.os.Handler;
@@ -87,7 +88,7 @@ public class ProxyThread extends Thread {
         destinationID = getContact;
     }
 
-
+    @Override
     public void run() {
         String tag = "ProxyThread:run";
         try {

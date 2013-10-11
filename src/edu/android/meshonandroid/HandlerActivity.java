@@ -1,4 +1,4 @@
-package meshonandroid;
+package edu.android.meshonandroid;
 
 import android.os.Handler;
 

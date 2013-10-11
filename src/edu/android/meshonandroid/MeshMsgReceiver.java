@@ -1,4 +1,4 @@
-package meshonandroid;
+package edu.android.meshonandroid;
 
 import meshonandroid.pdu.MeshPduInterface;
 

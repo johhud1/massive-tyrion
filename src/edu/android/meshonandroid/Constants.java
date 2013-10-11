@@ -1,4 +1,4 @@
-package meshonandroid;
+package edu.android.meshonandroid;
 
 public class Constants {
     public static final String encoding = "UTF-8";
@@ -42,6 +42,7 @@ public class Constants {
     protected static final String MESH_MSG_KEY = "MSGKEY";
     protected static final String MESH_MSG_CODE_KEY = "MSGCODEKEY";
 
+    public static final String MESH_WIFI_SSID = "nexusbac";
 
     public static int MAX_PAYLOAD_SIZE = adhoc.aodv.Constants.MAX_PACKAGE_SIZE - (4 * 1000); // 8
                                                                                               // ints
@@ -54,4 +55,6 @@ public class Constants {
                                                                                               // total
                                                                                               // reserved
                                                                                               // bytes;
+
+    public static final int WIFI_SCAN_SLEEP_INTERVAL = 1000;
 }

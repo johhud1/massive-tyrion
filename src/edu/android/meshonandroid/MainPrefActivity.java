@@ -1,6 +1,6 @@
-package meshonandroid;
+package edu.android.meshonandroid;
 
-import com.example.meshonandroid.R;
+import edu.android.meshonandroid.R;
 
 import android.content.SharedPreferences;
 import android.content.SharedPreferences.OnSharedPreferenceChangeListener;

@@ -8,9 +8,10 @@ import java.net.SocketTimeoutException;
 import java.util.Observable;
 import java.util.Observer;
 
-import meshonandroid.Constants;
-import meshonandroid.MeshMsgReceiver;
-import meshonandroid.Utils;
+import edu.android.meshonandroid.Constants;
+import edu.android.meshonandroid.MeshMsgReceiver;
+import edu.android.meshonandroid.Utils;
+
 import meshonandroid.pdu.AODVObserver;
 import meshonandroid.pdu.ConnectDataMsg;
 import meshonandroid.pdu.DataMsg;

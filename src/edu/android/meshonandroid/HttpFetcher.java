@@ -1,4 +1,4 @@
-package meshonandroid;
+package edu.android.meshonandroid;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;

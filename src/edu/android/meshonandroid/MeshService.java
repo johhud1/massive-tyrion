@@ -1,4 +1,4 @@
-package meshonandroid;
+package edu.android.meshonandroid;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -11,7 +11,7 @@ import java.util.Enumeration;
 
 import meshonandroid.pdu.AODVObserver;
 
-import com.example.meshonandroid.R;
+import edu.android.meshonandroid.R;
 
 import proxyServer.ProxyListener;
 import adhoc.aodv.Node;
@@ -93,8 +93,8 @@ public class MeshService extends Service {
             mNode.unBind();
             mNode.deleteObserver(mObs);
             mNode = null;
-            Utils.sendUIUpdateMsg(broadcaster, Constants.STATUS_MSG_CODE, "mesh service OFF");
         }
+        Utils.sendUIUpdateMsg(broadcaster, Constants.STATUS_MSG_CODE, "mesh service OFF");
     }
 
 

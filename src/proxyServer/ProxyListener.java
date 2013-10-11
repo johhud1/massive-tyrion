@@ -6,14 +6,16 @@ import java.net.InetAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
 
-import meshonandroid.Constants;
-import meshonandroid.ContactManager;
-import meshonandroid.Utils;
-import meshonandroid.ContactManager.NoContactsAvailableException;
+import edu.android.meshonandroid.Constants;
+import edu.android.meshonandroid.ContactManager;
+import edu.android.meshonandroid.Utils;
+import edu.android.meshonandroid.ContactManager.NoContactsAvailableException;
+
+import meshonandroid.logging.LoggingDBUtils;
+import meshonandroid.logging.PerfDBHelper;
+import meshonandroid.logging.WifiScannerThread;
 import meshonandroid.pdu.AODVObserver;
 
-import Logging.LoggingDBUtils;
-import Logging.PerfDBHelper;
 import adhoc.aodv.Node;
 import android.content.Context;
 import android.os.Handler;
@@ -58,6 +60,8 @@ public class ProxyListener extends Thread {
             Log.e(ProxyListener.class.getName(), "Could not listen on port: " + port);
             Utils.sendUIUpdateMsg(msgBroadcaster, Constants.STATUS_MSG_CODE, "error joining mesh");
         }
+        WifiScannerThread scanThread = new WifiScannerThread(mContext);
+        scanThread.start();
         while (listening) {
             try {
                 Socket s = serverSocket.accept();
@@ -83,6 +87,7 @@ public class ProxyListener extends Thread {
                 e.printStackTrace();
             }
         }
+        scanThread.stopScanning();
         Log.d(ProxyListener.class.getName(), " shutting down ProxyListener port: " + port + " serverSocket: " + serverSocket.toString());
         try {
             serverSocket.close();

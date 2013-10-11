@@ -1,11 +1,15 @@
-package Logging;
+package meshonandroid.logging;
 
 import java.util.Date;
+import java.util.List;
+
+import edu.android.meshonandroid.Constants;
 
 import android.content.ContentValues;
 import android.content.Context;
 import android.database.sqlite.SQLiteDatabase;
 import android.database.sqlite.SQLiteOpenHelper;
+import android.net.wifi.ScanResult;
 import android.util.Log;
 
 
@@ -24,8 +28,12 @@ public class PerfDBHelper extends SQLiteOpenHelper {
     private static final String TIME_VAR_TYPE = " INTEGER,";
     private static final String CS_VAR_TYPE = " INTEGER,";
 
+    private static final String TABLE_SCAN_RESULTS = "wifiscantable";
+    private static final String SCAN_COLUMN_MAC = " macaddress";
+    private static final String SCAN_COLUMN_RSSI = " rssi";
+    private static final String SCAN_COLUMN_RSSI_TYPE = " INTEGER,";
     // Database creation sql statement
-    private static final String DATABASE_CREATE = "create table " + TABLE_REQUESTS + "("
+    private static final String REQUEST_DATABASE_CREATE = "create table " + TABLE_REQUESTS + "("
                                                   + COLUMN_ID
                                                   + " integer primary key autoincrement,"
                                                   + COLUMN_START_TIME + TIME_VAR_TYPE
@@ -34,6 +42,12 @@ public class PerfDBHelper extends SQLiteOpenHelper {
                                                   + COLUMN_RES_HOST + " text,"
                                                   + COLUMN_RES + " text,"
                                                   + COLUMN_NODE_ID + " text"
+                                                  + ");";
+    private static final String SCAN_DATABASE_CREATE = "create table " + TABLE_SCAN_RESULTS + "("
+                                                  + COLUMN_ID + " integer primary key autoincrement,"
+                                                  + COLUMN_START_TIME + TIME_VAR_TYPE
+                                                  + SCAN_COLUMN_RSSI + SCAN_COLUMN_RSSI_TYPE
+                                                  + SCAN_COLUMN_MAC + " text"
                                                   + ");";
 
     /**
@@ -57,7 +71,8 @@ public class PerfDBHelper extends SQLiteOpenHelper {
 
     @Override
     public void onCreate(SQLiteDatabase db) {
-        db.execSQL(DATABASE_CREATE);
+        db.execSQL(REQUEST_DATABASE_CREATE);
+        db.execSQL(SCAN_DATABASE_CREATE);
     }
 
 
@@ -93,6 +108,25 @@ public class PerfDBHelper extends SQLiteOpenHelper {
             Log.e(PerfDBHelper.class.getName(), " not 1 row effected by setRequest. effected= "+effected+ " CV= "+cv.toString()+" dbId= "+id);
         }
         db.close();
+    }
+
+    synchronized void setScanResult(List<ScanResult> results){
+        SQLiteDatabase db = this.getWritableDatabase();
+        for(ScanResult r : results){
+            if(r.SSID.equalsIgnoreCase(Constants.MESH_WIFI_SSID)){
+                Log.d(PerfDBHelper.class.getName(), " adding mesh network node wifi scan result to db: "+r.toString());
+                ContentValues cv = new ContentValues();
+                cv.put(COLUMN_START_TIME, System.currentTimeMillis());
+                cv.put(SCAN_COLUMN_MAC, r.BSSID);
+                cv.put(SCAN_COLUMN_RSSI, r.level);
+                db.insert(TABLE_SCAN_RESULTS, null, cv);
+            } else {
+                Log.d(PerfDBHelper.class.getName(), " ignoring ssid scan result: "+r.toString());
+            }
+
+        }
+        db.close();
+
     }
 
 }

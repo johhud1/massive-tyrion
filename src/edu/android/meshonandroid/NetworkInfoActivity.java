@@ -1,4 +1,4 @@
-package meshonandroid;
+package edu.android.meshonandroid;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -12,11 +12,11 @@ import java.net.SocketException;
 import java.nio.ByteBuffer;
 import java.util.Enumeration;
 
+import meshonandroid.logging.LoggingDBUtils;
+import meshonandroid.logging.PerfDBHelper;
 import meshonandroid.pdu.AODVObserver;
 
 import proxyServer.ProxyListener;
-import Logging.LoggingDBUtils;
-import Logging.PerfDBHelper;
 import adhoc.aodv.Node;
 import android.annotation.SuppressLint;
 import android.app.Activity;
@@ -38,7 +38,7 @@ import android.widget.Button;
 import android.widget.CheckBox;
 import android.widget.TextView;
 
-import com.example.meshonandroid.R;
+import edu.android.meshonandroid.R;
 
 
 
@@ -145,7 +145,10 @@ public class NetworkInfoActivity extends Activity implements HandlerActivity {
                 startService(meshService);
 
             } else {
-                stopService(meshService);
+                if(!stopService(meshService)){
+                    Log.e(NetworkInfoActivity.class.getName(), " error stopping mesh service");
+                    Utils.sendUIUpdateMsg(LocalBroadcastManager.getInstance(this), Constants.STATUS_MSG_CODE, "error stopping mesh");
+                }
             }
             break;
         }

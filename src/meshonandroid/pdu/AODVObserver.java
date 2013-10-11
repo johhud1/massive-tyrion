@@ -3,12 +3,13 @@ package meshonandroid.pdu;
 import java.util.Observable;
 import java.util.Observer;
 
-import meshonandroid.Constants;
-import meshonandroid.ContactManager;
-import meshonandroid.FreeIPManager;
-import meshonandroid.HandlerActivity;
-import meshonandroid.OutLinkManager;
-import meshonandroid.Utils;
+import edu.android.meshonandroid.Constants;
+import edu.android.meshonandroid.ContactManager;
+import edu.android.meshonandroid.FreeIPManager;
+import edu.android.meshonandroid.HandlerActivity;
+import edu.android.meshonandroid.OutLinkManager;
+import edu.android.meshonandroid.Utils;
+
 
 import proxyServer.ConnectProxyThread;
 import proxyServer.ProxyThread;

@@ -1,6 +1,6 @@
 package meshonandroid.pdu;
 
-import meshonandroid.Constants;
+import edu.android.meshonandroid.Constants;
 
 public class ConnectionClosedMsg extends Msg {
 
